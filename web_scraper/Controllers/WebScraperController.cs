@@ -33,61 +33,58 @@ namespace web_scraper.Controllers {
 			// Debug
 			//_logger.LogInformation(document.DocumentElement.OuterHtml);
 
-			var advertrows = document.QuerySelectorAll(".ads__unit");
+			//var advertrows = document.QuerySelectorAll(".ads__unit");
 
-			foreach (var row in advertrows) {
-				// Create a container object
-				JobModel advert = new JobModel();
+			if (document.QuerySelectorAll("article") != null) {
+				var advertrows = document.QuerySelectorAll("article");
 
-				// Use regex to get all the numbers from this string
-				var position = row.QuerySelector(".ads__unit__content__keys");
-				if (position != null) {
-					advert.Position = position.TextContent;
-					/*TODO Remove*/
-					Console.WriteLine(advert.Position);
-				} else {
-					advert.Position = "null";
+				foreach (var row in advertrows) {
+					// Create a container object
+					JobModel advert = new JobModel();
+
+					// Use regex to get all the numbers from this string
+					var position = row.QuerySelector(".ads__unit__content__keys");
+					if (position != null) {
+						advert.Position = position.TextContent;
+						/*TODO Remove*/
+						Console.WriteLine(advert.Position);
+					} else {
+						advert.Position = "null";
+					}
+
+					var imageUrl = row.QuerySelector(".img-format__img");
+					if (position != null) {
+						advert.ImageUrl = imageUrl.TextContent;
+					} else {
+						advert.ImageUrl = "";
+					}
+
+					var link = row.QuerySelector(".ads__unit__link");
+					if (position != null) {
+						advert.AdvertUrl = link.TextContent;
+					} else {
+						advert.AdvertUrl = "";
+					}
+
+					results.Add(advert);
 				}
-
-				var imageUrl = row.QuerySelector(".img-format__img");
-				if (position != null) {
-					advert.ImageUrl = imageUrl.TextContent;
-				} else {
-					advert.ImageUrl = "";
-				}
-
-				var link = row.QuerySelector(".ads__unit__link");
-				if (position != null) {
-					advert.AdvertUrl = link.TextContent;
-				} else {
-					advert.AdvertUrl = "";
-				}
-
-				// regxMatches = Regex.Matches(row.QuerySelector(".year").TextContent, @"\d+");
-				// uint.TryParse(string.Join("", regxMatches), out uint year);
-				// advert.Year = year;
-
-				// // Get the fuel type from the ad
-				// advert.Fuel = row.QuerySelector(".fuel").TextContent[0];
-
-				// // Make and model
-				// advert.MakeAndModel = row.QuerySelector(".make_and_model > a").TextContent;
-
-				// // Link to the advert
-				// advert.AdvertUrl = websiteUrl + row.QuerySelector(".make_and_model > a").GetAttribute("Href");
-
-				results.Add(advert);
 			}
 
 			// Check if a next page link is present
-			string nextPageUrl = "";
-			var nextPageLink = document.QuerySelector(".next-page > .item");
+			string nextPageUrl = "https://www.finn.no/job/fulltime/search.html";
+			var nextPageLink = document.QuerySelector(".button--icon-right");
 			if (nextPageLink != null) {
-				nextPageUrl = websiteUrl + nextPageLink.GetAttribute("Href");
+				nextPageUrl = nextPageUrl + nextPageLink.GetAttribute("href");
+				Console.WriteLine("\n neste side funnet!");
+				Console.WriteLine(nextPageLink.GetAttribute("href") + "\n");
+			} else {
+				Console.WriteLine("\nFINISHED\n");
+				nextPageUrl = "";
 			}
 
 			// If next page link is present recursively call the function again with the new url
 			if (!String.IsNullOrEmpty(nextPageUrl)) {
+				Console.WriteLine("checking next page: " + nextPageUrl);
 				return await GetPageData(nextPageUrl, results);
 			}
 
