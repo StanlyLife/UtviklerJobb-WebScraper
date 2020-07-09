@@ -1,51 +1,64 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using web_scraper.Data;
+using web_scraper.Interfaces;
+using web_scraper.Interfaces.Implementations;
 
-namespace web_scraper
-{
-    public class Startup
-    {
-        public Startup(IConfiguration configuration)
-        {
-            Configuration = configuration;
-        }
+namespace web_scraper {
 
-        public IConfiguration Configuration { get; }
+	public class Startup {
 
-        // This method gets called by the runtime. Use this method to add services to the container.
-        public void ConfigureServices(IServiceCollection services)
-        {
-            services.AddControllers();
-        }
+		public Startup(IConfiguration configuration) {
+			Configuration = configuration;
+		}
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
-        {
-            if (env.IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-            }
+		public IConfiguration Configuration { get; }
 
-            app.UseHttpsRedirection();
+		// This method gets called by the runtime. Use this method to add services to the container.
+		public void ConfigureServices(IServiceCollection services) {
+			services.AddControllers();
+			services.AddDbContext<WebScraperContext>(options => {
+				var connectionString = "Data Source=(LocalDb)\\MSSQLLocalDB;" +
+											   "database=LocalWebScraperDb;" +
+											   "trusted_connection=yes;";
 
-            app.UseRouting();
+				var myMigrationAssembly = typeof(Startup).GetTypeInfo().Assembly.GetName().Name;
+				options.UseSqlServer(connectionString, sql => {
+					sql.MigrationsAssembly(myMigrationAssembly);
+				});
+			});
+			services.AddScoped<IJobHandler, JobHandler>();
+			services.AddScoped<IJobCategoryHandler, JobCategoryHandler>();
+			services.AddScoped<IJobTagHandler, JobTagHandler>();
+		}
 
-            app.UseAuthorization();
+		// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+		public void Configure(IApplicationBuilder app, IWebHostEnvironment env) {
+			if (env.IsDevelopment()) {
+				app.UseDeveloperExceptionPage();
+			}
 
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllers();
-            });
-        }
-    }
+			app.UseHttpsRedirection();
+
+			app.UseRouting();
+
+			app.UseAuthorization();
+
+			app.UseEndpoints(endpoints => {
+				endpoints.MapControllers();
+			});
+		}
+	}
 }
