@@ -6,10 +6,13 @@ using web_scraper.models;
 
 namespace web_scraper.Interfaces {
 
-	internal interface IJobTagHandler {
+	public interface IJobTagHandler {
+
+		bool SaveChanges();
+
 		/*Purge table*/
 
-		Task Purge();
+		void Purge();
 
 		/*Create*/
 
@@ -18,6 +21,8 @@ namespace web_scraper.Interfaces {
 		/*Read*/
 
 		Task<JobTagsModel> GetJobTagsById(string AdvertId);
+
+		Task<bool> JobIdHasTag(string AdvertId, string tag);
 
 		/*Delete*/
 
