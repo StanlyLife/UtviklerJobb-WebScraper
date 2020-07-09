@@ -12,12 +12,12 @@ namespace web_scraper.models {
 
 		//REMOVE
 		public JobListingModel() {
-			Category = new List<string>();
-			Tags = new List<string>();
+			//Category = new List<string>();
+			//Tags = new List<string>();
 		}
 
 		[Key]
-		public int DjId { get; }
+		public int JobListingId { get; set; }
 
 		[ForeignKey("JobModel")]
 		public string AdvertId { get; set; }
@@ -31,8 +31,8 @@ namespace web_scraper.models {
 		/*Job primary info*/
 		public string DescriptionHtml { get; set; }
 		public string Description { get; set; }
-		public List<string> Category { get; set; }
-		public List<string> Tags { get; set; }
+		//public List<string> Category { get; set; }
+		//public List<string> Tags { get; set; }
 		/*Job secondary info*/
 		public string NumberOfPositions { get; set; }
 		public string Admissioner { get; set; }
