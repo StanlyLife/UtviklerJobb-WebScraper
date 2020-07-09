@@ -7,7 +7,10 @@ using website_scraper.Models;
 
 namespace web_scraper.Interfaces {
 
-	internal interface IJobHandler {
+	public interface IJobHandler {
+
+		bool SaveChanges();
+
 		/*Purge Table*/
 
 		void Purge();
