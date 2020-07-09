@@ -6,16 +6,21 @@ using web_scraper.models;
 
 namespace web_scraper.Interfaces {
 
-	internal interface IJobCategoryHandler {
+	public interface IJobCategoryHandler {
+
+		bool SaveChanges();
+
 		/*Purge table*/
 
-		Task Purge();
+		void Purge();
 
 		/*Create*/
 
 		Task<JobCategoryModel> AddJobCategory(JobCategoryModel category);
 
 		/*Read*/
+
+		Task<bool> JobIdHasCategory(string AdvertId, string category);
 
 		Task<JobTagsModel> GetJobCategoriesById(string AdvertId);
 
