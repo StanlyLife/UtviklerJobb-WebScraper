@@ -12,6 +12,8 @@ using web_scraper.models;
 using Newtonsoft.Json;
 using System.Linq;
 using AngleSharp.XPath;
+using web_scraper.Interfaces;
+using web_scraper.Interfaces.Implementations;
 
 namespace web_scraper.Controllers {
 
@@ -24,12 +26,23 @@ namespace web_scraper.Controllers {
 		 */
 		private readonly string websiteUrl = "https://www.finn.no/job/fulltime/search.html?filters=&occupation=0.23&occupation=1.23.244&occupation=1.23.83&page=1&sort=1";
 		private readonly ILogger<FinnWebScraperController> _logger;
+		private readonly IJobHandler jobHandler;
+		private readonly IJobCategoryHandler jobCategoryHandler;
+		private readonly IJobTagHandler jobTagHandler;
 
-		public FinnWebScraperController(ILogger<FinnWebScraperController> logger) {
+		public FinnWebScraperController(
+			ILogger<FinnWebScraperController> logger,
+			IJobHandler jobHandler,
+			IJobCategoryHandler jobCategoryHandler,
+			IJobTagHandler jobTagHandler
+			) {
 			_logger = logger;
+			this.jobHandler = jobHandler;
+			this.jobCategoryHandler = jobCategoryHandler;
+			this.jobTagHandler = jobTagHandler;
 		}
 
-		private async Task<List<JobModel>> GetPageData(string url, List<JobModel> results) {
+		private async Task<List<JobAdModel>> GetPageData(string url, List<JobAdModel> results) {
 			var config = Configuration.Default.WithDefaultLoader();
 			var context = BrowsingContext.New(config);
 			var document = await context.OpenAsync(url);
@@ -44,7 +57,7 @@ namespace web_scraper.Controllers {
 
 				foreach (var row in advertrows) {
 					// Create a container object
-					JobModel advert = new JobModel();
+					JobAdModel advert = new JobAdModel();
 					advert.AdvertId = Guid.NewGuid().ToString();
 
 					var position = row.QuerySelector(".ads__unit__content__keys");
@@ -74,7 +87,7 @@ namespace web_scraper.Controllers {
 					} catch (Exception e) {
 						Console.WriteLine(e);
 					}
-
+					jobHandler.AddJobAd(advert);
 					results.Add(advert);
 				}
 			}
@@ -102,8 +115,8 @@ namespace web_scraper.Controllers {
 
 		private async Task<JobListModel> CheckForUpdates(string url, string mailTitle) {
 			// We create the container for the data we want
-			List<JobModel> adverts = new List<JobModel>();
-			List<DescriptiveJobModel> advertsInfo = new List<DescriptiveJobModel>();
+			List<JobAdModel> adverts = new List<JobAdModel>();
+			List<JobListingModel> advertsInfo = new List<JobListingModel>();
 
 			/**
 			 * GetPageData will recursively fill the container with data
@@ -115,18 +128,19 @@ namespace web_scraper.Controllers {
 
 			advertsInfo = await FillDescriptiveJobModelAsync(adverts);
 
+			jobHandler.SaveChanges();
 			return new JobListModel {
 				shortJobList = adverts,
 				descriptiveJobList = advertsInfo
 			};
 		}
 
-		private static async Task<List<DescriptiveJobModel>> FillDescriptiveJobModelAsync(List<JobModel> jobs) {
+		private async Task<List<JobListingModel>> FillDescriptiveJobModelAsync(List<JobAdModel> jobs) {
 			var config = Configuration.Default.WithDefaultLoader();
 			var context = BrowsingContext.New(config);
-			List<DescriptiveJobModel> fullJobList = new List<DescriptiveJobModel>();
+			List<JobListingModel> fullJobList = new List<JobListingModel>();
 			foreach (var job in jobs) {
-				DescriptiveJobModel fullJob = new DescriptiveJobModel {
+				JobListingModel fullJob = new JobListingModel {
 					AdvertId = job.AdvertId
 				};
 				var document = await context.OpenAsync(job.AdvertUrl);
@@ -152,24 +166,24 @@ namespace web_scraper.Controllers {
 				/**/
 				ExtractJobTags(fullJob, document);
 				/**/
-				ExtractDefinitionLists(fullJob, document);
+				await ExtractDefinitionListsAsync(fullJob, document);
 				fullJobList.Add(fullJob);
 			}
 			return fullJobList;
 		}
 
-		private static void ExtractJobTags(DescriptiveJobModel fullJob, IDocument document) {
-			var tags = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[1]/div/section[5]/p");
-			if (tags != null) {
-				char[] spearator = { ',' };
-				String[] strlist = tags.TextContent.Split(spearator);
-				foreach (string tag in strlist) {
-					fullJob.Tags.Add(tag);
-				}
-			}
+		private static void ExtractJobTags(JobListingModel fullJob, IDocument document) {
+			//var tags = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[1]/div/section[5]/p");
+			//if (tags != null) {
+			//	char[] spearator = { ',' };
+			//	String[] strlist = tags.TextContent.Split(spearator);
+			//	foreach (string tag in strlist) {
+			//		fullJob.Tags.Add(tag);
+			//	}
+			//}
 		}
 
-		private static void ExtractDefinitionLists(DescriptiveJobModel fullJob, IDocument document) {
+		private async Task ExtractDefinitionListsAsync(JobListingModel fullJob, IDocument document) {
 			var jobInfo = document.QuerySelectorAll(".definition-list");
 
 			string previousHead = "";
@@ -202,8 +216,9 @@ namespace web_scraper.Controllers {
 							case "stillingsfunksjon":
 							//Category
 							//ToDo
-							//Split tags '/'
-							fullJob.Category.Add(des.TextContent);
+							//REMOVE SPACES BEFORE AND AFTER CATEGORY
+							await AddCategory(fullJob, des);
+							jobCategoryHandler.SaveChanges();
 							break;
 
 							case "sted":
@@ -232,7 +247,26 @@ namespace web_scraper.Controllers {
 			}
 		}
 
-		private static void PrintInfo(List<JobModel> adverts) {
+		private async Task AddCategory(JobListingModel fullJob, IElement des) {
+			char[] spearator = { '/' };
+			String[] strlist = des.TextContent.Split(spearator);
+			foreach (string category in strlist) {
+				var categoryFormatted = category.Replace(",", "");
+				JobCategoryModel tag = new JobCategoryModel {
+					CategoryId = Guid.NewGuid().ToString(),
+					AdvertId = fullJob.AdvertId,
+					Category = categoryFormatted
+				};
+				if (!await jobCategoryHandler.JobIdHasCategory(fullJob.AdvertId, categoryFormatted)) {
+					await jobCategoryHandler.AddJobCategory(tag);
+					Console.WriteLine($"{fullJob.PositionTitle} - Added category: '{categoryFormatted}'");
+				} else {
+					Console.WriteLine($"{fullJob.PositionTitle} - duplicate category: '{categoryFormatted}'");
+				}
+			}
+		}
+
+		private static void PrintInfo(List<JobAdModel> adverts) {
 			int stillinger = 0;
 			foreach (var jobb in adverts) {
 				Console.WriteLine("\n");
@@ -249,8 +283,9 @@ namespace web_scraper.Controllers {
 
 		[HttpGet]
 		public async Task<string> GetAsync() {
+			jobHandler.Purge();
+			jobCategoryHandler.Purge();
 			var result = await CheckForUpdates(websiteUrl, "Web-Scraper updates");
-
 			return JsonConvert.SerializeObject(result);
 		}
 	}
