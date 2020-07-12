@@ -9,8 +9,8 @@ using web_scraper.Data;
 namespace web_scraper.Migrations
 {
     [DbContext(typeof(WebScraperContext))]
-    [Migration("20200709191920_initial-migration")]
-    partial class initialmigration
+    [Migration("20200712151624_init")]
+    partial class init
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -22,13 +22,15 @@ namespace web_scraper.Migrations
 
             modelBuilder.Entity("web_scraper.models.JobCategoryModel", b =>
                 {
-                    b.Property<string>("CategoryId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("AdvertId")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("CategoryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
                     b.Property<string>("Category")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("JobId")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("CategoryId");
@@ -36,12 +38,10 @@ namespace web_scraper.Migrations
                     b.ToTable("JobCategories");
                 });
 
-            modelBuilder.Entity("web_scraper.models.JobListingModel", b =>
+            modelBuilder.Entity("web_scraper.models.JobModel", b =>
                 {
-                    b.Property<int>("JobListingId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+                    b.Property<string>("JobId")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Admissioner")
                         .HasColumnType("nvarchar(max)");
@@ -52,7 +52,10 @@ namespace web_scraper.Migrations
                     b.Property<string>("AdmissionerContactPersonTelephone")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("AdvertId")
+                    b.Property<string>("AdmissionerWebsite")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AdvertUrl")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Deadline")
@@ -65,6 +68,9 @@ namespace web_scraper.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ForeignJobId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImageUrl")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Industry")
@@ -82,7 +88,16 @@ namespace web_scraper.Migrations
                     b.Property<string>("LocationZipCode")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Modified")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("NumberOfPositions")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OriginWebsite")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PositionHeadline")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PositionTitle")
@@ -91,23 +106,25 @@ namespace web_scraper.Migrations
                     b.Property<string>("PositionType")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("section")
+                    b.Property<string>("Sector")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("website")
+                    b.Property<string>("ShortDescription")
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("JobListingId");
+                    b.HasKey("JobId");
 
                     b.ToTable("JobListings");
                 });
 
             modelBuilder.Entity("web_scraper.models.JobTagsModel", b =>
                 {
-                    b.Property<string>("TagId")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("TagId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
-                    b.Property<string>("AdvertId")
+                    b.Property<string>("JobId")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("tag")
@@ -116,34 +133,6 @@ namespace web_scraper.Migrations
                     b.HasKey("TagId");
 
                     b.ToTable("JobTags");
-                });
-
-            modelBuilder.Entity("website_scraper.Models.JobAdModel", b =>
-                {
-                    b.Property<string>("AdvertId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Admissioner")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AdvertUrl")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ImageUrl")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("NumberOfPositions")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Position")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ShortDescription")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("AdvertId");
-
-                    b.ToTable("Jobs");
                 });
 #pragma warning restore 612, 618
         }

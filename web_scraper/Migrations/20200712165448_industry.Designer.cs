@@ -2,15 +2,17 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using web_scraper.Data;
 
 namespace web_scraper.Migrations
 {
     [DbContext(typeof(WebScraperContext))]
-    partial class WebScraperContextModelSnapshot : ModelSnapshot
+    [Migration("20200712165448_industry")]
+    partial class industry
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
