@@ -18,5 +18,6 @@ namespace website_scraper.Models {
 		public string NumberOfPositions { get; set; }
 		public string Admissioner { get; set; }
 		public string ShortDescription { get; set; }
+		public string PostedOrEdited { get; set; }
 	}
 }
