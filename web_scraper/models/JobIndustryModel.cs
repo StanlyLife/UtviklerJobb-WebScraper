@@ -3,14 +3,14 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace web_scraper.models {
 
-	public class JobCategoryModel {
+	public class JobIndustryModel {
 
 		[Key]
-		public int CategoryId { get; set; }
+		public int IndustryId { get; set; }
 
 		[ForeignKey("JobModel")]
 		public string JobId { get; set; }
 
-		public string Category { get; set; }
+		public string Industry { get; set; }
 	}
 }

@@ -6,10 +6,10 @@ namespace web_scraper.models {
 	public class JobTagsModel {
 
 		[Key]
-		public string TagId { get; set; }
+		public int TagId { get; set; }
 
 		[ForeignKey("JobModel")]
-		public string AdvertId { get; set; }
+		public string JobId { get; set; }
 
 		public string tag { get; set; }
 	}
