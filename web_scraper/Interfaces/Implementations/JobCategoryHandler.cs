@@ -1,9 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using web_scraper.Data;
 using web_scraper.models;
+using Z.EntityFramework.Plus;
 
 namespace web_scraper.Interfaces.Implementations {
 
@@ -29,7 +29,7 @@ namespace web_scraper.Interfaces.Implementations {
 
 		public async Task<bool> JobIdHasCategory(string AdvertId, string category) {
 			var query = from entity in db.JobCategories
-						where entity.AdvertId.Equals(AdvertId)
+						where entity.JobId.Equals(AdvertId)
 						&&
 						entity.Category.Equals(category)
 						select entity;
@@ -43,12 +43,7 @@ namespace web_scraper.Interfaces.Implementations {
 		}
 
 		public void Purge() {
-			var query = from entity in db.JobCategories
-						where entity.AdvertId != null
-						select entity;
-			foreach (var row in query) {
-				db.JobCategories.Remove(row);
-			}
+			db.JobCategories.Delete();
 			SaveChanges();
 		}
 

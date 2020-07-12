@@ -1,10 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using web_scraper.Data;
 using web_scraper.models;
-using website_scraper.Models;
+using Z.EntityFramework.Plus;
 
 namespace web_scraper.Interfaces.Implementations {
 
@@ -15,44 +14,42 @@ namespace web_scraper.Interfaces.Implementations {
 			this.db = db;
 		}
 
-		public async Task<JobAdModel> AddJobAd(JobAdModel job) {
-			await db.Jobs.AddAsync(job);
+		public async Task<JobModel> AddJobListing(JobModel job) {
+			await db.JobListings.AddAsync(job);
 			return job;
 		}
 
-		public Task<JobListingModel> AddJobListing(JobListingModel job) {
+		public Task<JobModel> DeleteJobListing(string id) {
 			throw new NotImplementedException();
 		}
 
-		public Task<JobAdModel> DeleteJobAd(string id) {
-			throw new NotImplementedException();
-		}
-
-		public Task<JobListingModel> DeleteJobListing(string id) {
-			throw new NotImplementedException();
-		}
-
-		public Task<JobAdModel> GetJobAdById(string id) {
-			throw new NotImplementedException();
-		}
-
-		public Task<JobListingModel> GetJobListingById(string id) {
-			throw new NotImplementedException();
+		public JobModel GetJobListingById(string id) {
+			var query = from entity in db.JobListings
+						where entity.JobId.Equals(id)
+						select entity;
+			if (query.Any()) {
+				return query.First();
+			} else {
+				Console.WriteLine($"did not find job with ID {id}");
+				return new JobModel();
+			}
 		}
 
 		public void Purge() {
-			var query = from entity in db.Jobs
-						where entity.AdvertId != null
-						select entity;
-			foreach (var row in query) {
-				db.Jobs.Remove(row);
-			}
+			db.JobListings.Delete();
 			SaveChanges();
 		}
 
 		public bool SaveChanges() {
 			if (db.SaveChanges() > 0) { return true; }
 			return false;
+		}
+
+		public JobModel UpdateJob(JobModel job) {
+			var entity = db.JobListings.Attach(job);
+			entity.State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+			SaveChanges();
+			return job;
 		}
 	}
 }

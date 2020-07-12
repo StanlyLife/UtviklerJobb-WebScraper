@@ -1,10 +1,9 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
 using web_scraper.Data;
 using web_scraper.models;
+using Z.EntityFramework.Plus;
 
 namespace web_scraper.Interfaces.Implementations {
 
@@ -30,7 +29,7 @@ namespace web_scraper.Interfaces.Implementations {
 
 		public async Task<bool> JobIdHasTag(string AdvertId, string tag) {
 			var query = from entity in db.JobTags
-						where entity.AdvertId == AdvertId
+						where entity.JobId == AdvertId
 						&&
 						entity.tag.ToLower() == tag.ToLower()
 						select entity;
@@ -40,17 +39,14 @@ namespace web_scraper.Interfaces.Implementations {
 			return false;
 		}
 
-		public Task Purge() {
-			throw new NotImplementedException();
+		public void Purge() {
+			db.JobTags.Delete();
+			SaveChanges();
 		}
 
 		public bool SaveChanges() {
 			if (db.SaveChanges() > 0) { return true; }
 			return false;
-		}
-
-		void IJobTagHandler.Purge() {
-			throw new NotImplementedException();
 		}
 	}
 }
