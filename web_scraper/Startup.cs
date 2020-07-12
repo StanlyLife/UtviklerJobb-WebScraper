@@ -40,8 +40,9 @@ namespace web_scraper {
 				});
 			});
 			services.AddScoped<IJobHandler, JobHandler>();
-			services.AddScoped<IJobCategoryHandler, JobCategoryHandler>();
 			services.AddScoped<IJobTagHandler, JobTagHandler>();
+			services.AddScoped<IJobCategoryHandler, JobCategoryHandler>();
+			services.AddScoped<IJobIndustryHandler, JobIndustryHandler>();
 		}
 
 		// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
