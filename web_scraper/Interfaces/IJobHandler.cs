@@ -3,34 +3,28 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using web_scraper.models;
-using website_scraper.Models;
 
 namespace web_scraper.Interfaces {
 
 	public interface IJobHandler {
-
-		bool SaveChanges();
-
-		/*Purge Table*/
-
-		void Purge();
-
 		/*Create*/
 
-		Task<JobAdModel> AddJobAd(JobAdModel job);
-
-		Task<JobListingModel> AddJobListing(JobListingModel job);
+		Task<JobModel> AddJobListing(JobModel job);
 
 		/*Read*/
 
-		Task<JobListingModel> GetJobListingById(string id);
+		JobModel GetJobListingById(string id);
 
-		Task<JobAdModel> GetJobAdById(string id);
+		/*Update*/
+
+		bool SaveChanges();
+
+		JobModel UpdateJob(JobModel job);
 
 		/*Delete*/
 
-		Task<JobListingModel> DeleteJobListing(string id);
+		void Purge();
 
-		Task<JobAdModel> DeleteJobAd(string id);
+		Task<JobModel> DeleteJobListing(string id);
 	}
 }
