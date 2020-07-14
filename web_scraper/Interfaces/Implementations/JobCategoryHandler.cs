@@ -34,8 +34,6 @@ namespace web_scraper.Interfaces.Implementations {
 						entity.Category.Equals(category)
 						select entity;
 			var test = query.Any();
-			Console.WriteLine($"ID: {AdvertId}");
-			Console.WriteLine($"Category: {category}");
 			if (query.Any()) {
 				return true;
 			}
