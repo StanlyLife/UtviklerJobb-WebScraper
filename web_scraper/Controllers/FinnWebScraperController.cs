@@ -17,7 +17,7 @@ namespace web_scraper.Controllers {
 	[ApiController]
 	[Route("Finn")]
 	public class FinnWebScraperController : ControllerBase {
-		/**
+		/*
 		 * The website I'm scraping has data where the paths are relative
 		 * so I need a base url set somewhere to build full url's
 		 */
@@ -50,13 +50,9 @@ namespace web_scraper.Controllers {
 			// Debug
 			//_logger.LogInformation(document.DocumentElement.OuterHtml);
 
-			//var advertrows = document.QuerySelectorAll(".ads__unit");
-
-			if (document.QuerySelectorAll("article") != null) {
-				var advertrows = document.QuerySelectorAll("article");
-
+			var advertrows = document.QuerySelectorAll("article");
+			if (advertrows != null) {
 				foreach (var row in advertrows) {
-					// Create a container object
 					JobModel job = new JobModel {
 						JobId = Guid.NewGuid().ToString(),
 						OriginWebsite = "Finn.no"
@@ -86,6 +82,8 @@ namespace web_scraper.Controllers {
 					var contentList = row.QuerySelectorAll(".ads__unit__content__list");
 					try {
 						job.Admissioner = contentList[0].TextContent;
+						//TODO
+						//	Format to integer
 						job.NumberOfPositions = contentList[1].TextContent;
 					} catch (Exception e) {
 						Console.WriteLine($"Error occured when scraping {job.AdvertUrl} --- {e}");
@@ -97,22 +95,23 @@ namespace web_scraper.Controllers {
 			}
 
 			// Check if a next page link is present
-			string NexPageUrlFormat = "https://www.finn.no/job/fulltime/search.html";
+			string NextPageUrlFormat = "https://www.finn.no/job/fulltime/search.html";
+			string NextPageUrl = "";
 
 			var nextPageLink = document.QuerySelector(".button--icon-right");
 			if (nextPageLink != null) {
-				NexPageUrlFormat = NexPageUrlFormat + nextPageLink.GetAttribute("href");
+				NextPageUrl = NextPageUrlFormat + nextPageLink.GetAttribute("href");
 				Console.WriteLine("\n neste side funnet!");
 				Console.WriteLine(nextPageLink.GetAttribute("href") + "\n");
 			} else {
 				Console.WriteLine("\nFINISHED\n");
-				NexPageUrlFormat = "";
+				NextPageUrlFormat = "";
 			}
 
 			// If next page link is present recursively call the function again with the new url
-			if (!String.IsNullOrEmpty(NexPageUrlFormat)) {
-				Console.WriteLine("checking next page: " + NexPageUrlFormat);
-				//return await GetPageData(nextPageUrl, results);
+			if (!String.IsNullOrEmpty(NextPageUrl)) {
+				Console.WriteLine("checking next page: " + NextPageUrlFormat);
+				return await GetPosition(NextPageUrl, results);
 			}
 			return results;
 		}
@@ -133,8 +132,8 @@ namespace web_scraper.Controllers {
 			return jobList;
 		}
 
-		//GetPostionListing
-		// Seeds model with information retrieved from the individual position url
+		//
+		//	- Seeds model with information retrieved from the individual position url
 		private async Task<List<JobModel>> GetPositionListing(List<JobModel> jobs) {
 			var config = Configuration.Default.WithDefaultLoader();
 			var context = BrowsingContext.New(config);
@@ -146,65 +145,62 @@ namespace web_scraper.Controllers {
 				//ToDo
 				//Remove "<p><br /></p>"
 				//Remove "<p>&nbsp;</p>"
-				//Error catching
 				fullJob.DescriptionHtml = document.QuerySelector(".import-decoration").ToHtml();
 				fullJob.Description = document.QuerySelector(".import-decoration").TextContent;
-				//fullJob.DescriptionHtml.Replace(@"\n", " ");
-				//fullJob.DescriptionHtml.Replace("<p><br></p>", "<br>");
-				//fullJob.DescriptionHtml.Replace(@"\", "");
-				//fullJob.DescriptionHtml.Replace("\"\\n", "");
-				//fullJob.DescriptionHtml.Replace("\\n\"", "");
-				//fullJob.DescriptionHtml.Replace("\\n \"", "");
-				/**/
+
+				/*Get Finn KODE*/
 				fullJob.ForeignJobId = document.QuerySelector(".u-select-all").TextContent;
-				//ToDo
-				//	Format to dateTime
-				fullJob.NumberOfPositions = job.NumberOfPositions;
-				/**/
-				//ToDo
-				//	Someone has to clean thi
 
-				///html/body/main/div/div[3]/div[2]/div/div/div/div/a/@href
-				///
-				//
+				/*Get Admissioner WEBSITE*/
+				await GetAdmissionerWebsite(context, fullJob, document);
 
-				var websiteNode = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[2]/div/div/div/div/a/@href");
-				var websiteElement = document.QuerySelector(".img-format--ratio16by9 > a");
-				var websiteQueryElement = document.QuerySelector(".u-b1");
-				if (websiteNode != null && websiteNode.ToString() != "AngleSharp.Html.Dom.HtmlAnchorElement") {
-					fullJob.AdmissionerWebsite = websiteNode.ToString();
-				} else if (websiteElement != null) {
-					fullJob.AdmissionerWebsite = websiteElement.GetAttribute("href");
-				} else if (websiteQueryElement != null) {
-					fullJob.AdmissionerWebsite = websiteQueryElement.GetAttribute("href");
-				}
-
-				if (fullJob.AdmissionerWebsite != null && fullJob.AdmissionerWebsite.StartsWith("https://www.finn.no/")) {
-					var innerDocument = await context.OpenAsync(fullJob.AdmissionerWebsite);
-					//var AdmissionerWebsiteHref = innerDocument.Body.SelectSingleNode("/html/body/div[2]/div/div/div/section[3]/p/a/@href");
-					var AdmissionerWebsiteHref = innerDocument.QuerySelector(".u-pr16");
-					if (AdmissionerWebsiteHref != null)
-						fullJob.AdmissionerWebsite = AdmissionerWebsiteHref.GetAttribute("href");
-					//fullJob.AdmissionerWebsite = AdmissionerWebsiteHref.ToString();
-				}
-
-				/**/
-				var positionTitle = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[1]/div/section[2]/dl/dd[2]").TextContent;
-				if (Regex.IsMatch(positionTitle, @"^\d")) {
-					fullJob.PositionTitle = fullJob.PositionHeadline;
-				} else {
-					fullJob.PositionTitle = positionTitle;
-				}
+				/*Error handling of PositionTitle*/
+				CheckAndGetPositionTitle(fullJob, document);
+				/*Get MODIFIED date*/
 				fullJob.Modified = document.Body.SelectSingleNode("/html/body/main/div/div[4]/table/tbody/tr[2]/td").TextContent;
-				/*tags*/
+				/*Get position TAGS*/
 				GetPositionTags(fullJob, document);
-				//Retrieves information
+				/*Get information from lists*/
 				await GetPositionInfo(fullJob, document);
-				//Add to database and jobList
+				/*Add jobb to list for api requests*/
+				/*update job in database*/
 				jobList.Add(jobHandler.UpdateJob(fullJob));
 			}
 
 			return jobList;
+		}
+
+		//
+		//	- If position title is a number, change position title.
+		//	- This method catches faulty strings due to some ads not adding a position title
+		//	  and the extracted position title on website matches the xpath of deadline.
+		private static void CheckAndGetPositionTitle(JobModel fullJob, IDocument document) {
+			var positionTitle = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[1]/div/section[2]/dl/dd[2]").TextContent;
+			if (Regex.IsMatch(positionTitle, @"^\d")) {
+				fullJob.PositionTitle = fullJob.PositionHeadline;
+			} else {
+				fullJob.PositionTitle = positionTitle;
+			}
+		}
+
+		private static async Task GetAdmissionerWebsite(IBrowsingContext context, JobModel fullJob, IDocument document) {
+			var websiteNode = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[2]/div/div/div/div/a/@href");
+			var websiteElement = document.QuerySelector(".img-format--ratio16by9 > a");
+			var websiteQueryElement = document.QuerySelector(".u-b1");
+			if (websiteNode != null && websiteNode.ToString() != "AngleSharp.Html.Dom.HtmlAnchorElement") {
+				fullJob.AdmissionerWebsite = websiteNode.ToString();
+			} else if (websiteElement != null) {
+				fullJob.AdmissionerWebsite = websiteElement.GetAttribute("href");
+			} else if (websiteQueryElement != null) {
+				fullJob.AdmissionerWebsite = websiteQueryElement.GetAttribute("href");
+			}
+
+			if (fullJob.AdmissionerWebsite != null && fullJob.AdmissionerWebsite.StartsWith("https://www.finn.no/")) {
+				var innerDocument = await context.OpenAsync(fullJob.AdmissionerWebsite);
+				var AdmissionerWebsiteHref = innerDocument.QuerySelector(".u-pr16");
+				if (AdmissionerWebsiteHref != null)
+					fullJob.AdmissionerWebsite = AdmissionerWebsiteHref.GetAttribute("href");
+			}
 		}
 
 		private void GetPositionTags(JobModel fullJob, IDocument document) {
@@ -258,8 +254,8 @@ namespace web_scraper.Controllers {
 							break;
 
 							case "sted":
-							//ToDo
-							//Format and split into cells
+							//TODO
+							//	Format and split into cells
 							fullJob.LocationAdress = des.TextContent;
 							break;
 
@@ -275,7 +271,7 @@ namespace web_scraper.Controllers {
 							case "telefon":
 							fullJob.AdmissionerContactPersonTelephone = des.TextContent.Replace("\n", "");
 							break;
-
+							/*Uncomment to check unscraped information*/
 							//default:
 							//Console.WriteLine($"@previous Head: '{previousHead}' - '{des.TextContent}'");
 							//break;
@@ -313,11 +309,19 @@ namespace web_scraper.Controllers {
 
 		[HttpGet]
 		public async Task<string> GetAsync() {
+			/*
+			 *
+			 * Instead of spending cpu resources
+			 * We purge the database and remove all content from tables
+			 * Then we seed them again
+			 *
+			 */
 			jobHandler.Purge();
 			jobTagHandler.Purge();
 			jobIndustryHandler.Purge();
 			jobCategoryHandler.Purge();
 			var result = await CheckForUpdates(websiteUrl, "Web-Scraper updates");
+			Console.WriteLine($"@@@@@ Finished with {result.Count} results! @@@@@");
 			return JsonConvert.SerializeObject(result);
 		}
 	}
