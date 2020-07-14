@@ -41,6 +41,11 @@ namespace web_scraper.models {
 		/**/
 		public string PositionType { get; set; }
 		public string Sector { get; set; }
+		//TODO
+		//	Map
+		[System.ComponentModel.DataAnnotations.Schema.NotMapped]
+		public string Accession { get; set; }
+
 		/**/
 		public string AdvertUrl { get; set; }
 		public string ImageUrl { get; set; }
