@@ -31,7 +31,7 @@ namespace web_scraper.Interfaces.Implementations {
 			var query = from entity in db.JobTags
 						where entity.JobId == AdvertId
 						&&
-						entity.tag.ToLower() == tag.ToLower()
+						entity.Tag.ToLower() == tag.ToLower()
 						select entity;
 			if (query.Count() > 0) {
 				return true;

@@ -216,7 +216,7 @@ namespace web_scraper.Controllers {
 			foreach (string tag in strlist) {
 				JobTagsModel jobTag = new JobTagsModel {
 					JobId = fullJob.JobId,
-					tag = tag.Trim()
+					Tag = tag.Trim()
 				};
 				jobTagHandler.AddJobTag(jobTag);
 				jobTagHandler.SaveChanges();
