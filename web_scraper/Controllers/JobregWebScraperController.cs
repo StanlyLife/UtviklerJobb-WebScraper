@@ -102,18 +102,248 @@ namespace web_scraper.Controllers {
 				"&branch[]=16",
 				"&branch[]=17",}
 			},
+			{ "&branchCategory[]=3", new List<string>() {
+				"&branch[]=18",
+				"&branch[]=19",
+				"&branch[]=20",}
+			},
+			{ "&branchCategory[]=4", new List<string>() {
+				"&branch[]=21",
+				"&branch[]=22",
+				"&branch[]=23",
+				"&branch[]=24",
+				"&branch[]=25",
+				"&branch[]=26",
+				"&branch[]=27",
+				"&branch[]=28",
+				"&branch[]=29",
+				"&branch[]=30",}
+			},
+			{ "&branchCategory[]=5", new List<string>() {
+				"&branch[]=31",
+				"&branch[]=32",
+				"&branch[]=33",
+				"&branch[]=34",
+				"&branch[]=35",
+				"&branch[]=36",
+				"&branch[]=37",
+				"&branch[]=38",
+				"&branch[]=39",
+				"&branch[]=40",}
+			},
+			{ "&branchCategory[]=6", new List<string>() {
+				"&branch[]=41",
+				"&branch[]=42",
+				"&branch[]=43",
+				"&branch[]=44",
+				"&branch[]=45",
+				"&branch[]=46",
+				"&branch[]=47",
+				"&branch[]=48",}
+			},
+			{ "&branchCategory[]=7", new List<string>() {
+				"&branch[]=49",
+				"&branch[]=50",
+				"&branch[]=51",
+				"&branch[]=52",
+				"&branch[]=53",
+				"&branch[]=54",
+				"&branch[]=55",
+				"&branch[]=56",
+				"&branch[]=57",
+				"&branch[]=58",
+				"&branch[]=59",
+				"&branch[]=60",
+				"&branch[]=61",
+				"&branch[]=62",}
+			},
+			{ "&branchCategory[]=8", new List<string>() {
+				"&branch[]=63",
+				"&branch[]=64",
+				"&branch[]=65",
+				"&branch[]=66",
+				"&branch[]=67",}
+			},
 			{ "&branchCategory[]=9", new List<string>() {
-				"&branch[]=73",
-				"&branch[]=71",
 				"&branch[]=68",
-				"&branch[]=70",
-				"&branch[]=72",
 				"&branch[]=69",
-				"&branch[]=74" }
+				"&branch[]=70",
+				"&branch[]=71",
+				"&branch[]=72",
+				"&branch[]=73",
+				"&branch[]=74",}
+			},
+			{ "&branchCategory[]=10", new List<string>() {
+				"&branch[]=75",
+				"&branch[]=76",
+				"&branch[]=77",
+				"&branch[]=78",
+				"&branch[]=79",
+				"&branch[]=80",
+				"&branch[]=81",}
+			},
+			{ "&branchCategory[]=11", new List<string>() {
+				"&branch[]=82",
+				"&branch[]=83",
+				"&branch[]=84",
+				"&branch[]=85",
+				"&branch[]=86",
+				"&branch[]=87",
+				"&branch[]=88",}
+			},
+			{ "&branchCategory[]=12", new List<string>() {
+				"&branch[]=89",
+				"&branch[]=90",
+				"&branch[]=91",
+				"&branch[]=92",
+				"&branch[]=93",
+				"&branch[]=94",
+				"&branch[]=95",
+				"&branch[]=96",}
+			},
+			{ "&branchCategory[]=13", new List<string>() {
+				"&branch[]=97",
+				"&branch[]=98",
+				"&branch[]=99",
+				"&branch[]=100",
+				"&branch[]=101",
+				"&branch[]=102",
+				"&branch[]=103",
+				"&branch[]=104",
+				"&branch[]=105",
+				"&branch[]=106",
+				"&branch[]=107",
+				"&branch[]=108",}
+			},
+			{ "&branchCategory[]=14", new List<string>() {
+				"&branch[]=109",
+				"&branch[]=110",
+				"&branch[]=111",
+				"&branch[]=112",
+				"&branch[]=113",
+				"&branch[]=114",
+				"&branch[]=115",
+				"&branch[]=116",
+				"&branch[]=117",
+				"&branch[]=118",
+				"&branch[]=119",
+				"&branch[]=120",
+				"&branch[]=121",
+				"&branch[]=122",}
+			},
+			{ "&branchCategory[]=15", new List<string>() {
+				"&branch[]=123",
+				"&branch[]=124",
+				"&branch[]=125",
+				"&branch[]=126",
+				"&branch[]=127",
+				"&branch[]=128",
+				"&branch[]=129",
+				"&branch[]=130",
+				"&branch[]=131",}
+			},
+			{ "&branchCategory[]=16", new List<string>() {
+				"&branch[]=132",
+				"&branch[]=133",
+				"&branch[]=134",
+				"&branch[]=135",
+				"&branch[]=136",}
+			},
+			{ "&branchCategory[]=17", new List<string>() {
+				"&branch[]=137",
+				"&branch[]=133",
+				"&branch[]=134",
+				"&branch[]=135",
+				"&branch[]=143",}
+			},
+			{ "&branchCategory[]=18", new List<string>() {
+				"&branch[]=144",
+				"&branch[]=145",
+				"&branch[]=146",
+				"&branch[]=147",
+				"&branch[]=148",
+				"&branch[]=149",
+				"&branch[]=150",
+				"&branch[]=151",}
+			},
+			{ "&branchCategory[]=19", new List<string>() {
+				"&branch[]=152",
+				"&branch[]=153",
+				"&branch[]=154",
+				"&branch[]=155",
+				"&branch[]=156",
+				"&branch[]=157",
+				"&branch[]=158",
+				"&branch[]=159",
+				"&branch[]=160",}
+			},
+			{ "&branchCategory[]=20", new List<string>() {
+				"&branch[]=161",
+				"&branch[]=162",
+				"&branch[]=163",
+				"&branch[]=164",
+				"&branch[]=165",
+				"&branch[]=166",
+				"&branch[]=166",}
+			},
+			{ "&branchCategory[]=21", new List<string>() {
+				"&branch[]=167",}
+			},
+			{ "&branchCategory[]=22", new List<string>() {
+				"&branch[]=168",
+				"&branch[]=169",
+				"&branch[]=170",
+				"&branch[]=171",
+				"&branch[]=172",
+				"&branch[]=173",
+				"&branch[]=174",
+				"&branch[]=175",
+				"&branch[]=176",
+				"&branch[]=177",}
+			},
+			{ "&branchCategory[]=23", new List<string>() {
+				"&branch[]=178",
+				"&branch[]=179",
+				"&branch[]=180",
+				"&branch[]=181",
+				"&branch[]=182",
+				"&branch[]=183",}
+			},
+			{ "&branchCategory[]=24", new List<string>() {
+				"&branch[]=184",
+				"&branch[]=185",
+				"&branch[]=186",
+				"&branch[]=187",
+				"&branch[]=188",
+				"&branch[]=189",
+				"&branch[]=190",
+				"&branch[]=191",
+				"&branch[]=192",
+				"&branch[]=193",
+				"&branch[]=194",
+				"&branch[]=195",
+				"&branch[]=196",
+				"&branch[]=197",
+				"&branch[]=198",
+				"&branch[]=199",}
+			},
+			{ "&branchCategory[]=25", new List<string>() {
+				"&branch[]=200",
+				"&branch[]=201",
+				"&branch[]=202",
+				"&branch[]=203",
+				"&branch[]=204",
+				"&branch[]=205",}
+			},
+			{ "&branchCategory[]=26", new List<string>() {
+				"&branch[]=206",
+				"&branch[]=207",
+				"&branch[]=208",}
 			},
 		};
 
 		private Dictionary<string, string> Categories = new Dictionary<string, string>() {
+			/*Bank / Finans / forsikring*/
 			{ "&branch[]=1", "Annet" },
 			{ "&branch[]=2", "Rådgiver" },
 			{ "&branch[]=3", "Saksbehandler" },
@@ -122,7 +352,7 @@ namespace web_scraper.Controllers {
 			{ "&branch[]=6", "Admisinistrativ Ledelse" },
 			{ "&branch[]=7", "Bank / Finansielle tjenester" },
 			{ "&branch[]=8", "Forskning / Fond / Pensjonsfond"},
-			/**/
+			/*Konsulenter / Frieyrker*/
 			{ "&branch[]=9", "Annet"},
 			{ "&branch[]=10", "Rekruttering"},
 			{ "&branch[]=11", "Arkitektvirksomhet"},
@@ -132,11 +362,11 @@ namespace web_scraper.Controllers {
 			{ "&branch[]=15", "x"},
 			{ "&branch[]=16", "Forretningsutvikling / strategi"},
 			{ "&branch[]=17", "Teknisk konsulentvirksomhet / Engineering"},
-			/**/
+			/*Forskning / utvikling*/
 			{ "&branch[]=18", "Annet"},
 			{ "&branch[]=19", "x"},
 			{ "&branch[]=20", "x"},
-			/**/
+			/*Helse / sosial*/
 			{ "&branch[]=21", "Annet"},
 			{ "&branch[]=22", "x"},
 			{ "&branch[]=23", "x"},
@@ -147,7 +377,7 @@ namespace web_scraper.Controllers {
 			{ "&branch[]=28", "Apotektjenester / Farmasi"},
 			{ "&branch[]=29", "Sykepleier og omsorgstjenester"},
 			{ "&branch[]=30", "Psykiatri og psykologtjenester"},
-			/**/
+			/*Hotell / Restaurant / Storhusholdning*/
 			{ "&branch[]=31", "Annet"},
 			{ "&branch[]=32", "x"},
 			{ "&branch[]=33", "x"},
@@ -157,7 +387,7 @@ namespace web_scraper.Controllers {
 			{ "&branch[]=37", "Kokk / Kjøkkenmedarbeider"},
 			{ "&branch[]=38", "Restaurant og barvirkshomhet"},
 			{ "&branch[]=39", "Kantine / Catering / Storhusholdning"},
-			/**/
+			/*Håndverk / Bygg / anlegg / Mekanikk*/
 			{ "&branch[]=40", "Annet"},
 			{ "&branch[]=41", "Elektriker"},
 			{ "&branch[]=42", "Bilmekaniker"},
@@ -347,6 +577,7 @@ namespace web_scraper.Controllers {
 			{ "&branch[]=206", "Ingeniør" },
 			{ "&branch[]=207", "x" },
 			{ "&branch[]=208", "x" },
+			/*Luftfart*/
 		};
 
 		public async Task<string> GetAsync() {
