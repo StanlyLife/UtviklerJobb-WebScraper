@@ -17,6 +17,8 @@ using OpenQA.Selenium.Support.UI;
 using web_scraper.models;
 using web_scraper.Lists.Categories;
 using web_scraper.Lists.Categories.jobreg;
+using web_scraper.Services;
+using System.Collections.ObjectModel;
 
 namespace web_scraper.Controllers {
 
@@ -58,35 +60,25 @@ namespace web_scraper.Controllers {
 			List<JobModel> jobList = new List<JobModel>();
 			/**/
 			var chromeoptions = new ChromeOptions();
-			chromeoptions.AddArguments(new List<string>() { "headless", "allow-running-insecure-content" });
+			var seleniumConfigService = new SeleniumConfigService();
+			chromeoptions = seleniumConfigService.SetDefaultChromeConfig(chromeoptions);
 			var driver = new ChromeDriver(chromeoptions);
 			/**/
 			JobAdsTimer.Start();
 			if (checkCategories) {
-				/**/
 				JobregCategories jobregCategories = new JobregCategories();
-				/**/
+				//Get parent category
 				foreach (var branch in jobregCategories.BranchLinkCategories) {
+					//Get sub category
+					if (iteration >= GlobalMaxIteration) { break; };
 					foreach (var category in branch.Value) {
-						var categoryWebsiteUrl = websiteUrl + branch.Key + category;
-						var categoryName = jobregCategories.Categories.Where(x => x.Key.Equals(category)).Select(x => x.Value).FirstOrDefault();
-						if (jobregCategories.Categories.ContainsKey(category)) {
-							Console.WriteLine($"\nCategory: {jobregCategories.Categories.GetValueOrDefault(category)}");
+						if (iteration >= GlobalMaxIteration) {
+							Console.WriteLine($"Max limit reached, iterations {iteration}/{GlobalMaxIteration} : {currentPage}/{MaxPagePerQuery}");
+							break;
 						}
-						/*Current category list*/
-						var categoryQueryList = new List<string>();
-						categoryQueryList.Add(branch.Key);
-						categoryQueryList.Add(category);
-						Console.WriteLine($"testing categortBranc {branch.Key} with category: {category}");
-						/*execute scraper*/
-						Console.WriteLine($"starting at {categoryWebsiteUrl}\n");
-						currentPage = 1;
-						List<JobModel> tempList = new List<JobModel>();
-						tempList = await GetJobs(categoryWebsiteUrl, new List<JobModel>(), driver, categoryQueryList);
-						Console.WriteLine($"@@@ Finished one category, found {tempList.Count()} jobs @@@");
-						Console.WriteLine($"@@@ Finished one category, currently {jobList.Count()} jobs in joblist @@@");
-						jobList.AddRange(tempList);
-						Console.WriteLine($"@@@ Finished one category, added {tempList.Count()} jobs in joblist: {jobList.Count()} @@@");
+						var categoryWebsiteUrl = websiteUrl + branch.Key + category;
+						Console.WriteLine($"\nCategory: {jobregCategories.Categories.GetValueOrDefault(category)}");
+						await GetJobsFromCategories(jobList, driver, branch, category, categoryWebsiteUrl);
 					}
 				}
 			} else {
@@ -102,6 +94,23 @@ namespace web_scraper.Controllers {
 			Console.WriteLine($"@@@@@ JobAdsTimer Finished after {JobListingTimer.Elapsed} seconds! @@@@@");
 			/**/
 			return jobList;
+		}
+
+		private async Task GetJobsFromCategories(List<JobModel> jobList, ChromeDriver driver, KeyValuePair<string, List<string>> branch, string category, string categoryWebsiteUrl) {
+			/*Current category list*/
+			var categoryQueryList = new List<string>();
+			categoryQueryList.Add(branch.Key);
+			categoryQueryList.Add(category);
+			Console.WriteLine($"testing categortBranc {branch.Key} with category: {category}");
+			/*execute scraper*/
+			Console.WriteLine($"starting at {categoryWebsiteUrl}\n");
+			currentPage = 1;
+			List<JobModel> tempList = new List<JobModel>();
+			tempList = await GetJobs(categoryWebsiteUrl, new List<JobModel>(), driver, categoryQueryList);
+			Console.WriteLine($"@@@ Finished one category, found {tempList.Count()} jobs @@@");
+			Console.WriteLine($"@@@ Finished one category, currently {jobList.Count()} jobs in joblist @@@");
+			jobList.AddRange(tempList);
+			Console.WriteLine($"@@@ Finished one category, added {tempList.Count()} jobs in joblist: {jobList.Count()} @@@");
 		}
 
 		private async Task<List<JobModel>> GetListingInfoAsync(List<JobModel> jobs, ChromeDriver driver) {
@@ -206,16 +215,16 @@ namespace web_scraper.Controllers {
 
 		private async Task<List<JobModel>> GetJobs(string url, List<JobModel> jobList, ChromeDriver driver, List<string> categoryQueryList) {
 			if (iteration >= GlobalMaxIteration || currentPage >= MaxPagePerQuery) {
-				Console.WriteLine("Max limit reached");
+				Console.WriteLine($"Max limit reached, iterations {iteration}/{GlobalMaxIteration} : {currentPage}/{MaxPagePerQuery}");
+				return jobList;
+			}
+			driver.Navigate().GoToUrl(url);
+			WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20));
+			wait.Until(ExpectedConditions.ElementExists(By.XPath("/html/body/div/header/div/div/div/div[2]/b[2]")));
+			if (driver.FindElement(By.XPath("/html/body/div/header/div/div/div/div[2]/b[2]")).Text == "0") {
 				return jobList;
 			}
 			iteration++;
-
-			driver.Navigate().GoToUrl(url);
-			WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20));
-			if (driver.FindElements(By.XPath("//*[@id=\"results\"]/h2")).Count() != 0) {
-				return jobList;
-			}
 			wait.Until(ExpectedConditions.ElementExists(By.CssSelector(".job-item")));
 			IReadOnlyList<IWebElement> jobs = driver.FindElements(By.CssSelector(".job-item"));
 
@@ -231,6 +240,7 @@ namespace web_scraper.Controllers {
 				try {
 					advertUrl = jobItem.FindElement(By.CssSelector(".adLogo > a"));
 				} catch (NoSuchElementException) {
+					//Sometimes the listing image is missing or a video is displayed
 					advertUrl = jobItem.FindElement(By.CssSelector(".description > a"));
 				}
 				if (advertUrl != null) {
@@ -250,49 +260,53 @@ namespace web_scraper.Controllers {
 			Console.WriteLine($"Found {jobs.Count} jobs at page {currentPage}!");
 
 			if (jobs.Count < 15) {
+				//The default amount of jobs = 15
+				//If default amount of jobs < 15 it means it is the last page
 				return jobList;
 			}
+
 			/*
+			 *
 			 * CHECK NEXT PAGE
+			 *
+			 *
 			 */
 			string NextPageUrlFormat = "https://www.jobreg.no/jobs.php?";
 			string NextPageUrlPagePrefix = "&start=";
-			string NextPageUrlCategories = "";
-			string NextPageUrl = "";
-			string result = "";
-			//IWebElement nextPageLink = driver.FindElement(By.XPath("/html/body/div/main/section/div/div/div/div/div[2]/div/ul/li[11]/a"));
+			string NextPageUrlCategories = string.Empty;
+			string NextPageUrl = string.Empty;
+			string result = string.Empty;
 			var nextPageLink = driver.FindElementsByCssSelector("#pagination li");
-			if (nextPageLink != null /* && content == " > "*/) {
-				foreach (var next in nextPageLink) {
-					if (next.Text.Trim() == (currentPage + 1).ToString() || next.Text == " > " || next.Text.Trim() == ">") {
-						result = GenerateNextPageUrl(next.FindElement(By.CssSelector("a")));
-						Console.WriteLine("FOUND IT! " + next.Text);
-						if (!string.IsNullOrEmpty(result)) {
-							break;
-						} else {
-							Console.WriteLine($"Next page href is null!");
-						}
-					} else {
-						Console.WriteLine($" #pagination li = '{next.Text}' --- next page == {currentPage + 1 }");
-					}
-				}
+			if (nextPageLink != null) {
+				result = GetNextPageUrl(result, nextPageLink);
 				if (!string.IsNullOrWhiteSpace(result)) {
 					NextPageUrl = url + NextPageUrlCategories + NextPageUrlPagePrefix + result;
-					Console.WriteLine($"\nNext page URL: '{NextPageUrl}' \n");
-				} else {
-					Console.WriteLine("did not find ' > '");
-					Console.WriteLine($"result: {result}");
+					Debug.WriteLine($"\nNEXT PAGE URL: '{NextPageUrl}' \n");
+					currentPage++;
+					return await GetJobs(NextPageUrl, jobList, driver, categoryQueryList);
 				}
-			}
-
-			// If next page link is present recursively call the function again with the new url
-			if (!String.IsNullOrEmpty(NextPageUrl)) {
-				Console.WriteLine("checking next page: " + NextPageUrl);
-				currentPage++;
-				return await GetJobs(NextPageUrl, jobList, driver, categoryQueryList);
+				Debug.WriteLine("Unable to retrieve next page \n");
 			}
 
 			return jobList;
+		}
+
+		private string GetNextPageUrl(string result, ReadOnlyCollection<IWebElement> nextPageLink) {
+			foreach (var next in nextPageLink) {
+				if (next.Text.Trim() == (currentPage + 1).ToString() || next.Text == " > " || next.Text.Trim() == ">") {
+					result = GenerateNextPageUrl(next.FindElement(By.CssSelector("a")));
+					Console.WriteLine("FOUND IT! " + next.Text);
+					if (!string.IsNullOrEmpty(result)) {
+						break;
+					} else {
+						Console.WriteLine($"Next page href is null!");
+					}
+				} else {
+					Console.WriteLine($" #pagination li = '{next.Text}' --- next page == {currentPage + 1 }");
+				}
+			}
+
+			return result;
 		}
 
 		private static string GenerateNextPageUrl(IWebElement nextPageLink) {
