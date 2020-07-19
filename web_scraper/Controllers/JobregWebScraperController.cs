@@ -19,6 +19,8 @@ using web_scraper.Lists.Categories;
 using web_scraper.Lists.Categories.jobreg;
 using web_scraper.Services;
 using System.Collections.ObjectModel;
+using web_scraper.Interfaces;
+using web_scraper.Interfaces.Implementations;
 
 namespace web_scraper.Controllers {
 
@@ -30,10 +32,16 @@ namespace web_scraper.Controllers {
 		private Stopwatch JobListingTimer = new Stopwatch();
 		private readonly int GlobalMaxIteration = 15;
 		private readonly int MaxPagePerQuery = 2;
+		private readonly IJobHandler jobHandler;
+		private readonly IJobCategoryHandler jobCategoryHandler;
+		private readonly IJobTagHandler jobTagHandler;
 		private int iteration = 0;
 		private int currentPage = 1;
 
-		public JobregWebScraperController() {
+		public JobregWebScraperController(IJobHandler jobHandler, IJobCategoryHandler jobCategoryHandler, IJobTagHandler jobTagHandler) {
+			this.jobHandler = jobHandler;
+			this.jobCategoryHandler = jobCategoryHandler;
+			this.jobTagHandler = jobTagHandler;
 		}
 
 		/*
@@ -49,10 +57,16 @@ namespace web_scraper.Controllers {
 		 */
 
 		public async Task<string> GetAsync() {
-			JobAdsTimer.Start();
+			jobTagHandler.Purge();
+			jobHandler.Purge();
+			jobCategoryHandler.Purge();
+			/**/
 			var result = await CheckForUpdates(true);
-			JobAdsTimer.Stop();
 			Console.WriteLine($"@@@@@ Finished with {result.Count} results! @@@@@");
+			/**/
+			Console.WriteLine($"@@@@@ JobAdsTimer Finished after {JobAdsTimer.Elapsed} seconds! @@@@@");
+			Console.WriteLine($"@@@@@ JobAdsTimer Finished after {JobListingTimer.Elapsed} seconds! @@@@@");
+			/**/
 			return JsonConvert.SerializeObject(result);
 		}
 
@@ -89,10 +103,6 @@ namespace web_scraper.Controllers {
 			JobListingTimer.Start();
 			jobList = await GetListingInfoAsync(jobList, driver);
 			JobListingTimer.Stop();
-			/**/
-			Console.WriteLine($"@@@@@ JobAdsTimer Finished after {JobAdsTimer.Elapsed} seconds! @@@@@");
-			Console.WriteLine($"@@@@@ JobAdsTimer Finished after {JobListingTimer.Elapsed} seconds! @@@@@");
-			/**/
 			return jobList;
 		}
 
@@ -124,9 +134,11 @@ namespace web_scraper.Controllers {
 				GetListingAdmissionerInfo(job, document);
 				/*GetTableContent*/
 				GetListingTableContent(job, document);
+				jobHandler.AddJobListing(job);
 			}
 			//ToDo
 			//	Add job to database
+			jobHandler.SaveChanges();
 			return jobs;
 		}
 
@@ -179,7 +191,7 @@ namespace web_scraper.Controllers {
 			}
 		}
 
-		private static void GetListingAdmissionerInfo(JobModel job, IDocument document) {
+		private void GetListingAdmissionerInfo(JobModel job, IDocument document) {
 			var contactPerson = document.Body.SelectSingleNode("/html/body/div[1]/header/div[2]/div/div/div/div/div[1]/div/div[2]/div/div[4]/div[2]/div[2]/span[1]/b");
 			if (contactPerson != null) {
 				job.AdmissionerContactPerson = contactPerson.TextContent;
@@ -201,12 +213,14 @@ namespace web_scraper.Controllers {
 			var tags = document.QuerySelectorAll(".label-default");
 			if (tags != null) {
 				foreach (var tag in tags) {
-					JobTagsModel tagModel = new JobTagsModel() {
-						JobId = job.JobId,
-						Tag = tag.TextContent,
-					};
-					//ToDo
-					//	Add tag to database
+					if (!string.IsNullOrWhiteSpace(tag.TextContent)) {
+						JobTagsModel tagModel = new JobTagsModel() {
+							JobId = job.JobId,
+							Tag = tag.TextContent.Trim(),
+						};
+						jobTagHandler.AddJobTag(tagModel);
+						jobTagHandler.SaveChanges();
+					}
 				}
 			} else {
 				Console.WriteLine($"No tags found for positon: {job.AdvertUrl}");
@@ -227,15 +241,26 @@ namespace web_scraper.Controllers {
 			iteration++;
 			wait.Until(ExpectedConditions.ElementExists(By.CssSelector(".job-item")));
 			IReadOnlyList<IWebElement> jobs = driver.FindElements(By.CssSelector(".job-item"));
-
+			JobregCategories jobregCategories = new JobregCategories();
 			foreach (var jobItem in jobs) {
 				JobModel job = new JobModel() {
 					OriginWebsite = "jobreg",
 					JobId = Guid.NewGuid().ToString(),
 				};
+				List<JobCategoryModel> categoryList = new List<JobCategoryModel>();
+
+				for (int i = 0; i < categoryQueryList.Count(); i++) {
+					JobCategoryModel temporaryCategory = new JobCategoryModel() {
+						JobId = job.JobId,
+					};
+					if (i < 1) {
+						temporaryCategory.Category = jobregCategories.BranchNames.GetValueOrDefault(categoryQueryList[i]);
+					} else {
+						temporaryCategory.Category = jobregCategories.Categories.GetValueOrDefault(categoryQueryList[i]);
+					}
+					categoryList.Add(temporaryCategory);
+				}
 				/**/
-				//TODO
-				// NULL ERROR HANDLING ON ADVERTURL
 				IWebElement advertUrl;
 				try {
 					advertUrl = jobItem.FindElement(By.CssSelector(".adLogo > a"));
@@ -255,6 +280,10 @@ namespace web_scraper.Controllers {
 						return jobList;
 					}
 					jobList.Add(job);
+					foreach (var category in categoryList) {
+						jobCategoryHandler.AddJobCategory(category);
+						jobCategoryHandler.SaveChanges();
+					}
 				}
 			}
 			Console.WriteLine($"Found {jobs.Count} jobs at page {currentPage}!");
