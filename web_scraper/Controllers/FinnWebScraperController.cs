@@ -55,7 +55,7 @@ namespace web_scraper.Controllers {
 				foreach (var row in advertrows) {
 					JobModel job = new JobModel {
 						JobId = Guid.NewGuid().ToString(),
-						OriginWebsite = "Finn.no"
+						OriginWebsite = "Finn"
 					};
 
 					var position = row.QuerySelector(".ads__unit__content__keys");
