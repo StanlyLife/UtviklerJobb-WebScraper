@@ -48,7 +48,7 @@ namespace web_scraper.Controllers {
 		 *
 		 * TODO
 		 * - Add all categories ✔
-		 * - Add items to database
+		 * - Add items to database ✔
 		 * - Check for duplicates system
 		 * - Rework honeypot detector
 		 * - refactor code
