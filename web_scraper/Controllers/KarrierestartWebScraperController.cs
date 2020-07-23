@@ -46,23 +46,37 @@ namespace web_scraper.Controllers {
 		}
 
 		private async Task<List<JobModel>> CheckForUpdates(string url) {
+			List<JobModel> jobList = new List<JobModel>();
 			/**/
 			var config = Configuration.Default.WithDefaultLoader();
 			var context = BrowsingContext.New(config);
 			/**/
 
-			await GetJobs(url, context);
+			await GetJobs(url, context, jobList);
 
 			return new List<JobModel>();
 		}
 
-		private async Task<List<JobModel>> GetJobs(string url, IBrowsingContext context) {
+		private async Task<List<JobModel>> GetJobs(string url, IBrowsingContext context, List<JobModel> jobList) {
 			var document = await context.OpenAsync(url);
 			var jobListings = document.QuerySelectorAll(".featured-wrap");
 
 			foreach (var jobAd in jobListings) {
 				var jobTitle = jobAd.QuerySelector(".title");
-				Console.WriteLine(jobTitle.TextContent);
+				var advertUrl = jobAd.QuerySelector(".j-futured-right > a");
+				if (jobTitle == null || advertUrl == null) { continue; }
+				JobModel job = new JobModel() {
+					JobId = Guid.NewGuid().ToString(),
+					OriginWebsite = "Karrierestart"
+				};
+
+				/**/
+				job.PositionHeadline = jobTitle.TextContent;
+				/**/
+				job.AdvertUrl = advertUrl.GetAttribute("href");
+				/**/
+				Console.WriteLine(job.PositionHeadline);
+				Console.WriteLine(job.AdvertUrl);
 			}
 
 			//Check if next page exists
