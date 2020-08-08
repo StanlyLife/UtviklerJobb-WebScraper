@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using AngleSharp;
 using AngleSharp.Dom;
+using AngleSharp.XPath;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using web_scraper.Interfaces;
@@ -57,9 +58,10 @@ namespace web_scraper.Controllers {
 			return new List<JobModel>();
 		}
 
-		private async Task<List<JobModel>> GetJobs(string url, IBrowsingContext context, List<JobModel> jobList) {
-			var document = await context.OpenAsync(url);
+		private async Task<List<JobModel>> GetJobs(string url, IBrowsingContext contextParameter, List<JobModel> jobList) {
+			var document = await contextParameter.OpenAsync(url);
 			var jobListings = document.QuerySelectorAll(".featured-wrap");
+			var context = contextParameter;
 
 			foreach (var jobAd in jobListings) {
 				var jobTitle = jobAd.QuerySelector(".title");
@@ -77,13 +79,26 @@ namespace web_scraper.Controllers {
 				/**/
 				Console.WriteLine(job.PositionHeadline);
 				Console.WriteLine(job.AdvertUrl);
+
+				/*END*/
+				jobList.Add(job);
 			}
 
 			//Check if next page exists
 			//Get Next page url
-			//Recursion
 
-			return new List<JobModel>();
+			var nextPageElement = document.QuerySelector(".next-pager-btn > a");
+			var nextPageUrl = "";
+			if (nextPageElement != null) {
+				Console.WriteLine($"nextpage href = {nextPageElement.GetAttribute("href")}");
+				nextPageUrl = "https://karrierestart.no" + nextPageElement.GetAttribute("href");
+			}
+			//Recursion
+			if (!string.IsNullOrEmpty(nextPageUrl)) {
+				GetJobs(nextPageUrl, context, jobList);
+			}
+
+			return jobList;
 		}
 	}
 }
