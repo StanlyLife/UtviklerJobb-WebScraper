@@ -276,6 +276,7 @@ namespace web_scraper.Controllers {
 					/**/
 					if (jobList.Contains(job)) {
 						//Honeypot detection
+						//TODO FIX
 						Console.WriteLine($"@@@@@@ \nPossible honeypot at {websiteUrl} \ncurrent page {currentPage} \nduplicate jobId {job.ForeignJobId} \njob url {job.AdvertUrl} \n@@@@@@");
 						return jobList;
 					}
