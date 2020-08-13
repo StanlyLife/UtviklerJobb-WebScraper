@@ -24,7 +24,6 @@ namespace web_scraper.Controllers {
 		private readonly IJobCategoryHandler jobCategoryHandler;
 		private readonly IJobTagHandler jobTagHandler;
 		private int iteration = 0;
-		private int currentPage = 1;
 
 		public KarrierestartWebScraperController(IJobHandler jobHandler, IJobCategoryHandler jobCategoryHandler, IJobTagHandler jobTagHandler) {
 			this.jobHandler = jobHandler;
@@ -53,12 +52,18 @@ namespace web_scraper.Controllers {
 			var context = BrowsingContext.New(config);
 			/**/
 
-			await GetJobs(url, context, jobList);
+			jobList = await GetJobs(url, context, jobList);
+			//scrape info from ads
+			await GetPositionListing(jobList, context);
 
 			return new List<JobModel>();
 		}
 
 		private async Task<List<JobModel>> GetJobs(string url, IBrowsingContext contextParameter, List<JobModel> jobList) {
+			if (iteration >= GlobalMaxIteration) {
+				Console.WriteLine($"Max limit reached, iterations {iteration}/{GlobalMaxIteration}");
+				return jobList;
+			}
 			var document = await contextParameter.OpenAsync(url);
 			var jobListings = document.QuerySelectorAll(".featured-wrap");
 			var context = contextParameter;
@@ -77,6 +82,9 @@ namespace web_scraper.Controllers {
 				/**/
 				job.AdvertUrl = advertUrl.GetAttribute("href");
 				/**/
+				job.ForeignJobId = advertUrl.GetAttribute("href").Substring(advertUrl.GetAttribute("href").LastIndexOf('/') + 1);
+				Console.WriteLine($"Foreign jobID: {job.ForeignJobId}");
+
 				Console.WriteLine(job.PositionHeadline);
 				Console.WriteLine(job.AdvertUrl);
 
@@ -100,5 +108,12 @@ namespace web_scraper.Controllers {
 
 			return jobList;
 		}
+
+		private async Task<List<JobModel>> GetPositionListing(List<JobModel> jobList, IBrowsingContext contextParameter) {
+			foreach (var job in jobList) {
+				var document = await contextParameter.OpenAsync(job.AdvertUrl);
+			}
+
+			return jobList;
+		}
 	}
-}
