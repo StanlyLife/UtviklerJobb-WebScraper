@@ -309,13 +309,6 @@ namespace web_scraper.Controllers {
 
 		[HttpGet]
 		public async Task<string> GetAsync() {
-			/*
-			 *
-			 * Instead of spending cpu resources
-			 * We purge the database and remove all content from tables
-			 * Then we seed them again
-			 *
-			 */
 			jobHandler.Purge();
 			jobTagHandler.Purge();
 			jobIndustryHandler.Purge();
