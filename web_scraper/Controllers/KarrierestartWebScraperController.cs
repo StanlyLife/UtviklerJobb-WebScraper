@@ -25,17 +25,20 @@ namespace web_scraper.Controllers {
 		private readonly IJobHandler jobHandler;
 		private readonly IJobCategoryHandler jobCategoryHandler;
 		private readonly IJobTagHandler jobTagHandler;
+		private readonly IJobIndustryHandler jobIndustryHandler;
 		private int iteration = 0;
 
-		public KarrierestartWebScraperController(IJobHandler jobHandler, IJobCategoryHandler jobCategoryHandler, IJobTagHandler jobTagHandler) {
+		public KarrierestartWebScraperController(IJobHandler jobHandler, IJobCategoryHandler jobCategoryHandler, IJobTagHandler jobTagHandler, IJobIndustryHandler jobIndustryHandler) {
 			this.jobHandler = jobHandler;
 			this.jobCategoryHandler = jobCategoryHandler;
 			this.jobTagHandler = jobTagHandler;
+			this.jobIndustryHandler = jobIndustryHandler;
 		}
 
 		public async Task<string> GetAsync() {
 			jobTagHandler.Purge();
 			jobHandler.Purge();
+			jobIndustryHandler.Purge();
 			jobCategoryHandler.Purge();
 			/**/
 			var result = await CheckForUpdates(websiteUrl);
@@ -77,12 +80,14 @@ namespace web_scraper.Controllers {
 			foreach (var jobAd in jobListings) {
 				var jobTitle = jobAd.QuerySelector(".title");
 				var advertUrl = jobAd.QuerySelector(".j-futured-right > a");
+				var admissionerLogo = jobAd.QuerySelector(".logo");
 				if (jobTitle == null || advertUrl == null) { continue; }
 				JobModel job = new JobModel() {
 					JobId = Guid.NewGuid().ToString(),
 					OriginWebsite = "Karrierestart"
 				};
-
+				/**/
+				job.ImageUrl = "https://karrierestart.no" + admissionerLogo.GetAttribute("src");
 				/**/
 				job.PositionHeadline = jobTitle.TextContent;
 				/**/
@@ -122,7 +127,7 @@ namespace web_scraper.Controllers {
 
 				var description = document.QuerySelector(".cp_vacancies > .jobad-info-block.p_fix");
 				var shortDescription = document.QuerySelector(".cp_about_left_wrapper.dual-bullet-list");
-				if (description == null) { continue; } else {
+				if (description == null) { Debug.WriteLine($"no description at listing: {job.AdvertUrl}"); continue; } else {
 					job.Description = description.TextContent;
 					job.DescriptionHtml = description.Html();
 				}
@@ -134,27 +139,54 @@ namespace web_scraper.Controllers {
 				var deadline = document.QuerySelector(".jobad-deadline-date");
 				var admissioner = document.QuerySelector(".head-blu-txt");
 				var admissionerWebsite = document.QuerySelector(".ctrl-info");
+				var tiltredelse = document.QuerySelector(".element-sec");
+				var tags = document.QuerySelector(".txt.job-tags");
+				var stillingsType = document.Body.SelectSingleNode("//*[@id=\"job-fact-block\"]/div/div[2]/table/tbody/tr[2]/td[2]/span");
 
 				if (bransjer != null) {
 					var bransjeList = bransjer.TextContent.Split("/");
 					int counter = 0;
 					foreach (string b in bransjeList) {
-						bransjeList[counter] = b.Trim();
-						Debug.WriteLine($"-{bransjeList[counter]}-");
+						JobCategoryModel category = new JobCategoryModel {
+							JobId = job.JobId,
+							Category = b.Trim()
+						};
+						await jobCategoryHandler.AddJobCategory(category);
+						jobCategoryHandler.SaveChanges();
 						counter++;
 					}
-					//Add to database
+				} else {
+					Debug.WriteLine($"no bransje at {job.AdvertUrl}");
 				}
 
 				if (fagOmrader != null) {
 					var fagOmraderList = fagOmrader.TextContent.Split("/");
 					int counter = 0;
 					foreach (string b in fagOmraderList) {
-						fagOmraderList[counter] = b.Trim();
-						Debug.WriteLine($"-{fagOmraderList[counter]}-");
+						JobIndustryModel industry = new JobIndustryModel {
+							JobId = job.JobId,
+							Industry = b.Trim()
+						};
+						await jobIndustryHandler.AddJobIndustry(industry);
+						jobIndustryHandler.SaveChanges();
 						counter++;
 					}
-					//Add to database
+				} else {
+					Debug.WriteLine($"no fagOmrader at {job.AdvertUrl}");
+				}
+
+				if (tags != null) {
+					foreach (var tag in tags.ChildNodes) {
+						if (string.IsNullOrWhiteSpace(tag.TextContent)) { continue; }
+						JobTagsModel t = new JobTagsModel {
+							JobId = job.JobId,
+							Tag = tag.TextContent.Trim(),
+						};
+						jobTagHandler.AddJobTag(t);
+						jobTagHandler.SaveChanges();
+					}
+				} else {
+					Debug.WriteLine($"no tags at {job.AdvertUrl}");
 				}
 
 				if (stillingsTittel != null) {
@@ -175,8 +207,18 @@ namespace web_scraper.Controllers {
 				if (shortDescription != null) {
 					job.ShortDescription = shortDescription.TextContent;
 				}
+				if (tiltredelse != null) {
+					job.Accession = tiltredelse.TextContent;
+				}
+				if (stillingsType != null) {
+					job.PositionType = stillingsType.TextContent;
+				}
+				if (admissioner != null) {
+					job.Admissioner = admissioner.TextContent;
+				}
+				await jobHandler.AddJobListing(job);
 			}
-
+			jobHandler.SaveChanges();
 			return jobList;
 		}
 	}
