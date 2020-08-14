@@ -7,6 +7,8 @@ using AngleSharp;
 using AngleSharp.Dom;
 using AngleSharp.XPath;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using web_scraper.Interfaces;
 using web_scraper.models;
@@ -19,7 +21,7 @@ namespace web_scraper.Controllers {
 		private readonly string websiteUrl = "https://karrierestart.no/jobb?page=1";
 		private Stopwatch JobAdsTimer = new Stopwatch();
 		private Stopwatch JobListingTimer = new Stopwatch();
-		private readonly int GlobalMaxIteration = 15;
+		private readonly int GlobalMaxIteration = 1;
 		private readonly IJobHandler jobHandler;
 		private readonly IJobCategoryHandler jobCategoryHandler;
 		private readonly IJobTagHandler jobTagHandler;
@@ -52,17 +54,21 @@ namespace web_scraper.Controllers {
 			var context = BrowsingContext.New(config);
 			/**/
 
+			Debug.WriteLine("startet scraping ads");
 			jobList = await GetJobs(url, context, jobList);
 			//scrape info from ads
-			await GetPositionListing(jobList, context);
+			Debug.WriteLine("startet scraping listings");
+			jobList = await GetPositionListing(jobList, context);
 
-			return new List<JobModel>();
+			return jobList;
 		}
 
 		private async Task<List<JobModel>> GetJobs(string url, IBrowsingContext contextParameter, List<JobModel> jobList) {
 			if (iteration >= GlobalMaxIteration) {
 				Console.WriteLine($"Max limit reached, iterations {iteration}/{GlobalMaxIteration}");
 				return jobList;
+			} else {
+				iteration++;
 			}
 			var document = await contextParameter.OpenAsync(url);
 			var jobListings = document.QuerySelectorAll(".featured-wrap");
@@ -103,7 +109,7 @@ namespace web_scraper.Controllers {
 			}
 			//Recursion
 			if (!string.IsNullOrEmpty(nextPageUrl)) {
-				GetJobs(nextPageUrl, context, jobList);
+				await GetJobs(nextPageUrl, context, jobList);
 			}
 
 			return jobList;
@@ -112,8 +118,54 @@ namespace web_scraper.Controllers {
 		private async Task<List<JobModel>> GetPositionListing(List<JobModel> jobList, IBrowsingContext contextParameter) {
 			foreach (var job in jobList) {
 				var document = await contextParameter.OpenAsync(job.AdvertUrl);
+				Console.WriteLine($"scraping listing: {job.AdvertUrl}");
+
+				var description = document.QuerySelector(".cp_vacancies > .jobad-info-block.p_fix");
+				var shortDescription = document.QuerySelector(".cp_about_left_wrapper.dual-bullet-list");
+				if (description == null) { continue; } else {
+					job.Description = description.TextContent;
+					job.DescriptionHtml = description.Html();
+				}
+				var bransjer = document.Body.SelectSingleNode("//*[@id=\"job-fact-block\"]/div/div[2]/table/tbody/tr[6]/td[3]/span/a");
+				var fagOmrader = document.Body.SelectSingleNode("//*[@id=\"job-fact-block\"]/div/div[2]/table/tbody/tr[4]/td[3]/span/a");
+				var stillingsTittel = document.Body.SelectSingleNode("//*[@id=\"job-fact-block\"]/div/div[2]/table/tbody/tr[4]/td[2]/span/a");
+				var stillingsHeader = document.Body.SelectSingleNode("//*[@id=\"job-fact-block\"]/h2");
+				var locationAdress = document.Body.SelectSingleNode("//*[@id=\"job-fact-block\"]/div/div[2]/table/tbody/tr[4]/td[1]/span/a");
+				var deadline = document.QuerySelector(".jobad-deadline-date");
+				var admissioner = document.QuerySelector(".head-blu-txt");
+				var admissionerWebsite = document.QuerySelector(".ctrl-info");
+
+				if (bransjer != null) {
+					//Del opp
+					Console.WriteLine(bransjer.TextContent);
+				}
+
+				if (fagOmrader != null) {
+					//Del opp
+					Console.WriteLine(fagOmrader.TextContent);
+				}
+
+				if (stillingsTittel != null) {
+					job.PositionTitle = stillingsTittel.TextContent;
+				}
+				if (stillingsHeader != null) {
+					job.PositionHeadline = stillingsHeader.TextContent;
+				}
+				if (locationAdress != null) {
+					job.LocationAdress = locationAdress.TextContent;
+				}
+				if (deadline != null) {
+					job.Deadline = deadline.TextContent;
+				}
+				if (admissionerWebsite != null) {
+					job.AdmissionerWebsite = admissionerWebsite.TextContent;
+				}
+				if (shortDescription != null) {
+					job.ShortDescription = shortDescription.TextContent;
+				}
 			}
 
 			return jobList;
 		}
 	}
+}
