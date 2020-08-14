@@ -136,13 +136,25 @@ namespace web_scraper.Controllers {
 				var admissionerWebsite = document.QuerySelector(".ctrl-info");
 
 				if (bransjer != null) {
-					//Del opp
-					Console.WriteLine(bransjer.TextContent);
+					var bransjeList = bransjer.TextContent.Split("/");
+					int counter = 0;
+					foreach (string b in bransjeList) {
+						bransjeList[counter] = b.Trim();
+						Debug.WriteLine($"-{bransjeList[counter]}-");
+						counter++;
+					}
+					//Add to database
 				}
 
 				if (fagOmrader != null) {
-					//Del opp
-					Console.WriteLine(fagOmrader.TextContent);
+					var fagOmraderList = fagOmrader.TextContent.Split("/");
+					int counter = 0;
+					foreach (string b in fagOmraderList) {
+						fagOmraderList[counter] = b.Trim();
+						Debug.WriteLine($"-{fagOmraderList[counter]}-");
+						counter++;
+					}
+					//Add to database
 				}
 
 				if (stillingsTittel != null) {
