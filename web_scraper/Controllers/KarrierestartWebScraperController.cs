@@ -211,7 +211,8 @@ namespace web_scraper.Controllers {
 					job.Accession = tiltredelse.TextContent;
 				}
 				if (stillingsType != null) {
-					job.PositionType = stillingsType.TextContent;
+					job.PositionType = stillingsType.TextContent.Trim();
+					
 				}
 				if (admissioner != null) {
 					job.Admissioner = admissioner.TextContent;
