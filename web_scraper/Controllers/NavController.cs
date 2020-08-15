@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -27,19 +29,14 @@ namespace web_scraper.Controllers {
 
 		[HttpGet]
 		public async Task<string> GetAsync() {
-			//client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("bearer", ApiKey);
-			//client.DefaultRequestHeaders.Add("Accept", "application/json");
-			//var request = await client.GetAsync("https://arbeidsplassen.nav.no/public-feed/api/v1/ads?page=1&size=5");
+			client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("bearer", ApiKey);
+			client.DefaultRequestHeaders.Add("accept", "application/json");
+			HttpResponseMessage response = await client.GetAsync(url);
 
-			using (var httpClient = new HttpClient()) {
-				using (var request = new HttpRequestMessage(new HttpMethod("GET"), url)) {
-					request.Headers.TryAddWithoutValidation("accept", "application/json");
-					request.Headers.TryAddWithoutValidation("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwdWJsaWMudG9rZW4udjFAbmF2Lm5vIiwiYXVkIjoiZmVlZC1hcGktdjEiLCJpc3MiOiJuYXYubm8iLCJpYXQiOjE1NTc0NzM0MjJ9.jNGlLUF9HxoHo5JrQNMkweLj_91bgk97ZebLdfx3_UQ");
+			var byteArray = response.Content.ReadAsByteArrayAsync().Result;
+			var result = Encoding.UTF8.GetString(byteArray, 0, byteArray.Length);
 
-					var response = await httpClient.SendAsync(request);
-					return JsonConvert.SerializeObject(response);
-				}
-			}
+			return JsonConvert.SerializeObject(result);
 		}
 	}
 }
