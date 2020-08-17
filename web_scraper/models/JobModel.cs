@@ -9,7 +9,7 @@ namespace web_scraper.models {
 		public string JobId { get; set; }
 
 		/**/
-
+		public string advertExpires { get; set; }
 		public string PositionHeadline { get; set; }
 		public string PositionTitle { get; set; }
 
