@@ -27,7 +27,9 @@ namespace web_scraper.models {
 		public string DescriptionHtml { get; set; }
 		public string Description { get; set; }
 
+		public string AdmissionerDescription { get; set; }
 		/*Job secondary info*/
+
 		public string NumberOfPositions { get; set; }
 		public string Deadline { get; set; }
 		public string Modified { get; set; }
@@ -41,6 +43,7 @@ namespace web_scraper.models {
 		/**/
 		public string PositionType { get; set; }
 		public string Sector { get; set; }
+
 		//TODO
 		//	Map
 		[System.ComponentModel.DataAnnotations.Schema.NotMapped]
