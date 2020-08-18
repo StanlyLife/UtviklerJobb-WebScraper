@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging;
 using web_scraper.Data;
 using web_scraper.Interfaces;
 using web_scraper.Interfaces.Implementations;
+using web_scraper.Interfaces.JobRetrievers;
 
 namespace web_scraper {
 
@@ -39,6 +40,8 @@ namespace web_scraper {
 					sql.MigrationsAssembly(myMigrationAssembly);
 				});
 			});
+			services.AddTransient<INavApiRequest, NavApiRequest>();
+			services.AddTransient<IFinnScraper, FinnScraper>();
 			services.AddScoped<IJobHandler, JobHandler>();
 			services.AddScoped<IJobTagHandler, JobTagHandler>();
 			services.AddScoped<IJobCategoryHandler, JobCategoryHandler>();
