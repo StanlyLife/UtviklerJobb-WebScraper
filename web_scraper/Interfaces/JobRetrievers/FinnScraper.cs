@@ -11,7 +11,7 @@ using web_scraper.models;
 
 namespace web_scraper.Interfaces.JobRetrievers {
 
-	public class FinnScraper {
+	public class FinnScraper : IFinnScraper {
 		private readonly string websiteUrl = "https://www.finn.no/job/fulltime/search.html?filters=&occupation=0.23&occupation=1.23.244&occupation=1.23.83&page=1&sort=1";
 		private readonly IJobHandler jobHandler;
 		private readonly IJobCategoryHandler jobCategoryHandler;
@@ -30,7 +30,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			this.jobIndustryHandler = jobIndustryHandler;
 		}
 
-		private async Task<List<JobModel>> GetPosition(string url, List<JobModel> results) {
+		public async Task<List<JobModel>> GetPosition(string url, List<JobModel> results) {
 			var config = Configuration.Default.WithDefaultLoader();
 			var context = BrowsingContext.New(config);
 			var document = await context.OpenAsync(url);
@@ -104,7 +104,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			return results;
 		}
 
-		private async Task<List<JobModel>> CheckForUpdates() {
+		public async Task<List<JobModel>> CheckForUpdates() {
 			// We create the container for the data we want
 			List<JobModel> jobList = new List<JobModel>();
 			var url = websiteUrl;
@@ -123,7 +123,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 
 		//
 		//	- Seeds model with information retrieved from the individual position url
-		private async Task<List<JobModel>> GetPositionListing(List<JobModel> jobs) {
+		public async Task<List<JobModel>> GetPositionListing(List<JobModel> jobs) {
 			var config = Configuration.Default.WithDefaultLoader();
 			var context = BrowsingContext.New(config);
 
@@ -163,7 +163,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 		//	- If position title is a number, change position title.
 		//	- This method catches faulty strings due to some ads not adding a position title
 		//	  and the extracted position title on website matches the xpath of deadline.
-		private static void CheckAndGetPositionTitle(JobModel fullJob, IDocument document) {
+		public void CheckAndGetPositionTitle(JobModel fullJob, IDocument document) {
 			var positionTitle = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[1]/div/section[2]/dl/dd[2]").TextContent;
 			if (Regex.IsMatch(positionTitle, @"^\d")) {
 				fullJob.PositionTitle = fullJob.PositionHeadline;
@@ -172,7 +172,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			}
 		}
 
-		private static async Task GetAdmissionerWebsite(IBrowsingContext context, JobModel fullJob, IDocument document) {
+		public async Task GetAdmissionerWebsite(IBrowsingContext context, JobModel fullJob, IDocument document) {
 			var websiteNode = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[2]/div/div/div/div/a/@href");
 			var websiteElement = document.QuerySelector(".img-format--ratio16by9 > a");
 			var websiteQueryElement = document.QuerySelector(".u-b1");
@@ -192,7 +192,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			}
 		}
 
-		private void GetPositionTags(JobModel fullJob, IDocument document) {
+		public void GetPositionTags(JobModel fullJob, IDocument document) {
 			Console.WriteLine($"Tags for: {fullJob.AdvertUrl}");
 			var tags = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[1]/div/section[5]/p");
 			if (tags == null) {
@@ -212,7 +212,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			}
 		}
 
-		private async Task GetPositionInfo(JobModel fullJob, IDocument document) {
+		public async Task GetPositionInfo(JobModel fullJob, IDocument document) {
 			var jobInfo = document.QuerySelectorAll(".definition-list");
 
 			string previousHead = "";
@@ -270,7 +270,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			}
 		}
 
-		private async Task AddIndustry(JobModel fullJob, IElement des) {
+		public async Task AddIndustry(JobModel fullJob, IElement des) {
 			var industry = des.TextContent.Replace(",", "").Trim();
 			JobIndustryModel JobIndustry = new JobIndustryModel {
 				JobId = fullJob.JobId,
