@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
+using web_scraper.Interfaces;
 using web_scraper.models;
 
 namespace web_scraper.Controllers {
@@ -17,62 +18,83 @@ namespace web_scraper.Controllers {
 	[Route("nav")]
 	[ApiController]
 	public class NavController : ControllerBase {
-		private static readonly HttpClient client = new HttpClient();
+		private readonly INavApiRequest navApiRequest;
 
-		//This key is public and is found at: https://github.com/navikt/pam-public-feed
-		public string ApiKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwdWJsaWMudG9rZW4udjFAbmF2Lm5vIiwiYXVkIjoiZmVlZC1hcGktdjEiLCJpc3MiOiJuYXYubm8iLCJpYXQiOjE1NTc0NzM0MjJ9.jNGlLUF9HxoHo5JrQNMkweLj_91bgk97ZebLdfx3_UQ";
-
-		public string url = "https://arbeidsplassen.nav.no/public-feed/api/v1/ads?page=1&size=5";
-
-		public NavController() {
+		public NavController(INavApiRequest navApiRequest) {
+			this.navApiRequest = navApiRequest;
 		}
 
 		[HttpGet]
 		public async Task<string> GetAsync() {
-			client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("bearer", ApiKey);
-			client.DefaultRequestHeaders.Add("accept", "application/json");
-			HttpResponseMessage response = await client.GetAsync(url);
-
-			var byteArray = response.Content.ReadAsByteArrayAsync().Result;
-			var result = Encoding.UTF8.GetString(byteArray, 0, byteArray.Length);
-
-			dynamic dynJson = JsonConvert.DeserializeObject(result) as Newtonsoft.Json.Linq.JObject;
-
-			List<JobModel> jobList = new List<JobModel>();
-			foreach (var item in dynJson["content"]) {
-				jobList.Add(GetJobs(item));
-			}
+			List<JobModel> jobList = await navApiRequest.SendApiRequest();
 
 			return JsonConvert.SerializeObject(jobList);
 		}
 
-		public JobModel GetJobs(dynamic item) {
-			JobModel job = new JobModel() {
-				JobId = Guid.NewGuid().ToString(),
-				ForeignJobId = item["uuid"],
-				PositionType = item["engagementtype"],
-				NumberOfPositions = item["positioncount"],
-				Modified = item["updated"],
-				PositionTitle = item["title"],
-				AdvertUrl = item["title"],
-				Admissioner = item["employer"]["name"],
-				AdmissionerWebsite = item["employer"]["homepage"],
-				Sector = item["sector"],
-				Accession = item["starttime"],
-				Deadline = item["applicationDue"]
-			};
-			//JobCategoryModel category1 = new JobCategoryModel() {
-			//	Category = item["occupationCategories"]["level1"],
-			//	JobId = job.JobId,
-			//};
-			//JobCategoryModel category2 = new JobCategoryModel() {
-			//	Category = item["occupationCategories"]["level1"],
-			//	JobId = job.JobId,
-			//};
+		//public async Task<List<JobModel>> SendApiRequest() {
+		//	client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("bearer", ApiKey);
+		//	client.DefaultRequestHeaders.Add("accept", "application/json");
+		//	HttpResponseMessage response = await client.GetAsync(url);
 
-			//Console.WriteLine($"Category1: {category1.Category}, Category2: {category2.Category}");
+		//	var byteArray = response.Content.ReadAsByteArrayAsync().Result;
+		//	var result = Encoding.UTF8.GetString(byteArray, 0, byteArray.Length);
 
-			return job;
-		}
+		//	dynamic dynJson = JsonConvert.DeserializeObject(result) as Newtonsoft.Json.Linq.JObject;
+
+		//	List<JobModel> jobList = new List<JobModel>();
+		//	foreach (var item in dynJson["content"]) {
+		//		jobList.Add(TransferJobModels(item));
+		//	}
+
+		//	return jobList;
+		//}
+
+		//public JobModel TransferJobModels(dynamic item) {
+		//	JobModel job = new JobModel() {
+		//		JobId = Guid.NewGuid().ToString(),
+		//		OriginWebsite = "nav",
+		//		/**/
+		//		advertExpires = item["expires"],
+		//		Accession = item["starttime"],
+		//		Admissioner = item["employer"]["name"],
+		//		AdmissionerDescription = item["employer"]["description"],
+		//		AdmissionerWebsite = item["employer"]["homepage"],
+		//		DescriptionHtml = item["description"],
+
+		//		Deadline = item["applicationDue"],
+		//		LocationCity = item["workLocations"][0]["city"],
+		//		LocationAdress = item["workLocations"][0]["adress"],
+		//		LocationZipCode = item["workLocations"][0]["postalCode"],
+		//		Modified = item["updated"],
+		//		NumberOfPositions = item["positioncount"],
+		//		PositionTitle = item["title"],
+		//		PositionType = item["engagementtype"],
+		//		ForeignJobId = item["uuid"],
+		//		Sector = item["sector"],
+		//	};
+
+		//	JobCategoryModel category1 = new JobCategoryModel() {
+		//		Category = item["occupationCategories"][0]["level1"],
+		//		JobId = job.JobId,
+		//	};
+		//	JobCategoryModel category2 = new JobCategoryModel() {
+		//		Category = item["occupationCategories"][0]["level2"],
+		//		JobId = job.JobId,
+		//	};
+		//	//Add category to db
+
+		//	job.Admissioner = item["source"];
+		//	if (job.Admissioner == "null" || string.IsNullOrWhiteSpace(job.Admissioner)) {
+		//		job.Admissioner = "Nav";
+		//	}
+
+		//	job.AdvertUrl = item["title"];
+		//	if (string.IsNullOrWhiteSpace(job.AdvertUrl)) {
+		//		job.AdvertUrl = item["link"];
+		//	}
+
+		//	//Add job to db
+		//	return job;
+		//}
 	}
 }
