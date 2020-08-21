@@ -41,6 +41,7 @@ namespace web_scraper {
 				});
 			});
 			services.AddTransient<INavApiRequest, NavApiRequest>();
+			services.AddTransient<IJobregScraper, JobregScraper>();
 			services.AddTransient<IFinnScraper, FinnScraper>();
 			services.AddTransient<IKarrierestartScraper, KarrierestartScraper>();
 			services.AddScoped<IJobHandler, JobHandler>();
