@@ -1,4 +1,6 @@
 ﻿using AngleSharp;
+using AngleSharp.Dom;
+using AngleSharp.XPath;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
