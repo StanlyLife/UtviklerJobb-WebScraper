@@ -9,8 +9,13 @@ namespace web_scraper.models {
 		public string JobId { get; set; }
 
 		/**/
-		public string advertExpires { get; set; }
+		public string AdvertExpires { get; set; }
+		public string AdvertModified { get; set; }
+
+		public string advertPublished { get; set; }
+
 		public string PositionHeadline { get; set; }
+
 		public string PositionTitle { get; set; }
 
 		/**/
@@ -32,7 +37,6 @@ namespace web_scraper.models {
 
 		public string NumberOfPositions { get; set; }
 		public string Deadline { get; set; }
-		public string Modified { get; set; }
 
 		/**/
 		public string Admissioner { get; set; }
