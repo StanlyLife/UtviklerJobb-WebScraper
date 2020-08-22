@@ -22,9 +22,16 @@ namespace web_scraper.Interfaces.Implementations {
 		private readonly IExistModified existModifiedHandler;
 
 		//This key is public and is found at: https://github.com/navikt/pam-public-feed
-		public string ApiKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwdWJsaWMudG9rZW4udjFAbmF2Lm5vIiwiYXVkIjoiZmVlZC1hcGktdjEiLCJpc3MiOiJuYXYubm8iLCJpYXQiOjE1NTc0NzM0MjJ9.jNGlLUF9HxoHo5JrQNMkweLj_91bgk97ZebLdfx3_UQ";
+		private string ApiKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwdWJsaWMudG9rZW4udjFAbmF2Lm5vIiwiYXVkIjoiZmVlZC1hcGktdjEiLCJpc3MiOiJuYXYubm8iLCJpYXQiOjE1NTc0NzM0MjJ9.jNGlLUF9HxoHo5JrQNMkweLj_91bgk97ZebLdfx3_UQ";
 
-		public string url = "https://arbeidsplassen.nav.no/public-feed/api/v1/ads?page=1&size=50";
+		private string baseUrl = "https://arbeidsplassen.nav.no/public-feed/api/v1/ads?";
+
+		/*
+		*
+		* TODO
+		* - Scrape all 5000 listings, not just the first 100
+		*
+		*/
 
 		public NavApiRequest(
 			IJobHandler jobHandler,
@@ -41,9 +48,10 @@ namespace web_scraper.Interfaces.Implementations {
 		}
 
 		public async Task<List<JobModel>> SendApiRequest() {
+			jobHandler.Purge();
 			client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("bearer", ApiKey);
 			client.DefaultRequestHeaders.Add("accept", "application/json");
-			HttpResponseMessage response = await client.GetAsync(url);
+			HttpResponseMessage response = await client.GetAsync(UrlConstructor(150, 2));
 
 			var byteArray = response.Content.ReadAsByteArrayAsync().Result;
 			var result = Encoding.UTF8.GetString(byteArray, 0, byteArray.Length);
@@ -71,6 +79,17 @@ namespace web_scraper.Interfaces.Implementations {
 			return jobList;
 		}
 
+		private string size = "size=";
+		private string parameterSpace = "&";
+		private string page = "page=";
+
+		//Max 100 results per page
+		//Max 5000 most recent ads aviable
+		public string UrlConstructor(int adsPerPage, int pageNumber) {
+			var url = baseUrl + size + adsPerPage + parameterSpace + page + pageNumber;
+			return url;
+		}
+
 		public JobModel SetJobValues(JobModel job, dynamic item) {
 			job.OriginWebsite = "nav";
 			/**/
@@ -81,14 +100,15 @@ namespace web_scraper.Interfaces.Implementations {
 			job.AdmissionerDescription = item["employer"]["description"];
 			job.AdmissionerWebsite = item["employer"]["homepage"];
 			job.DescriptionHtml = item["description"];
-
+			/**/
 			job.Deadline = item["applicationDue"];
 			job.LocationCity = item["workLocations"][0]["city"];
 			job.LocationAdress = item["workLocations"][0]["adress"];
 			job.LocationZipCode = item["workLocations"][0]["postalCode"];
 			job.AdvertModified = item["updated"];
 			job.NumberOfPositions = item["positioncount"];
-			job.PositionTitle = item["title"];
+			job.PositionHeadline = item["title"];
+			job.PositionTitle = item["jobtitle"];
 			job.PositionType = item["engagementtype"];
 			job.ForeignJobId = item["uuid"];
 			job.Sector = item["sector"];
@@ -132,7 +152,7 @@ namespace web_scraper.Interfaces.Implementations {
 				job.Admissioner = "Nav";
 			}
 
-			job.AdvertUrl = item["title"];
+			job.AdvertUrl = item["sourceurl"];
 			if (string.IsNullOrWhiteSpace(job.AdvertUrl)) {
 				job.AdvertUrl = item["link"];
 			}

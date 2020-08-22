@@ -12,6 +12,8 @@ namespace web_scraper.Interfaces {
 
 		public JobModel SetJobValues(JobModel job, dynamic item);
 
+		string UrlConstructor(int adsPerPage, int page);
+
 		public Task<JobModel> TransferJobModelsAsync(dynamic item, bool update);
 	}
 }
