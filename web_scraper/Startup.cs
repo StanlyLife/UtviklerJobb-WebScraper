@@ -14,6 +14,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using web_scraper.Data;
 using web_scraper.Interfaces;
+using web_scraper.Interfaces.Database;
 using web_scraper.Interfaces.Implementations;
 using web_scraper.Interfaces.JobRetrievers;
 
@@ -40,6 +41,7 @@ namespace web_scraper {
 					sql.MigrationsAssembly(myMigrationAssembly);
 				});
 			});
+			services.AddTransient<IExistModified, ExistModified>();
 			services.AddTransient<INavApiRequest, NavApiRequest>();
 			services.AddTransient<IJobregScraper, JobregScraper>();
 			services.AddTransient<IFinnScraper, FinnScraper>();
