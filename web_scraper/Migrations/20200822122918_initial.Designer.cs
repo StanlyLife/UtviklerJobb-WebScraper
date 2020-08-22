@@ -9,8 +9,8 @@ using web_scraper.Data;
 namespace web_scraper.Migrations
 {
     [DbContext(typeof(WebScraperContext))]
-    [Migration("20200712165448_industry")]
-    partial class industry
+    [Migration("20200822122918_initial")]
+    partial class initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -70,7 +70,16 @@ namespace web_scraper.Migrations
                     b.Property<string>("AdmissionerContactPersonTelephone")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("AdmissionerDescription")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("AdmissionerWebsite")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AdvertExpires")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AdvertModified")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("AdvertUrl")
@@ -91,9 +100,6 @@ namespace web_scraper.Migrations
                     b.Property<string>("ImageUrl")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Industry")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("LocationAdress")
                         .HasColumnType("nvarchar(max)");
 
@@ -104,9 +110,6 @@ namespace web_scraper.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("LocationZipCode")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Modified")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("NumberOfPositions")
@@ -130,6 +133,9 @@ namespace web_scraper.Migrations
                     b.Property<string>("ShortDescription")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("advertPublished")
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("JobId");
 
                     b.ToTable("JobListings");
@@ -145,7 +151,7 @@ namespace web_scraper.Migrations
                     b.Property<string>("JobId")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("tag")
+                    b.Property<string>("Tag")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("TagId");
