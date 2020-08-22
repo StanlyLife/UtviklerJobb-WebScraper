@@ -1,21 +1,44 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using web_scraper.Data;
+using web_scraper.Interfaces.Database;
 using web_scraper.models;
 
 namespace web_scraper.Interfaces.Implementations {
 
 	public class NavApiRequest : INavApiRequest {
 		public static readonly HttpClient client = new HttpClient();
+		private readonly IJobHandler jobHandler;
+		private readonly IJobCategoryHandler jobCategoryHandler;
+		private readonly IJobTagHandler jobTagHandler;
+		private readonly IJobIndustryHandler jobIndustryHandler;
+		private readonly IExistModified existModifiedHandler;
 
 		//This key is public and is found at: https://github.com/navikt/pam-public-feed
 		public string ApiKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwdWJsaWMudG9rZW4udjFAbmF2Lm5vIiwiYXVkIjoiZmVlZC1hcGktdjEiLCJpc3MiOiJuYXYubm8iLCJpYXQiOjE1NTc0NzM0MjJ9.jNGlLUF9HxoHo5JrQNMkweLj_91bgk97ZebLdfx3_UQ";
 
 		public string url = "https://arbeidsplassen.nav.no/public-feed/api/v1/ads?page=1&size=50";
+
+		public NavApiRequest(
+			IJobHandler jobHandler,
+			IJobCategoryHandler jobCategoryHandler,
+			IJobTagHandler jobTagHandler,
+			IJobIndustryHandler jobIndustryHandler,
+			IExistModified existModifiedHandler
+			) {
+			this.jobHandler = jobHandler;
+			this.jobCategoryHandler = jobCategoryHandler;
+			this.jobTagHandler = jobTagHandler;
+			this.jobIndustryHandler = jobIndustryHandler;
+			this.existModifiedHandler = existModifiedHandler;
+		}
 
 		public async Task<List<JobModel>> SendApiRequest() {
 			client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("bearer", ApiKey);
@@ -29,35 +52,63 @@ namespace web_scraper.Interfaces.Implementations {
 
 			List<JobModel> jobList = new List<JobModel>();
 			foreach (var item in dynJson["content"]) {
-				jobList.Add(TransferJobModels(item));
+				if (existModifiedHandler.CheckIfExists(Convert.ToString(item["uuid"]))) {
+					if (existModifiedHandler.CheckIfModified(Convert.ToString(item["uuid"]), Convert.ToString(item["description"]))) {
+						Debug.WriteLine("updated job");
+						JobModel job = await TransferJobModelsAsync(item, true);
+						jobList.Add(job);
+					} else {
+						Debug.WriteLine("Job exists and is not modified");
+						continue;
+					}
+				} else {
+					Debug.WriteLine("Scraping job");
+					JobModel job = await TransferJobModelsAsync(item, false);
+					jobList.Add(job);
+				}
 			}
-
+			jobHandler.SaveChanges();
 			return jobList;
 		}
 
-		public JobModel TransferJobModels(dynamic item) {
-			JobModel job = new JobModel() {
-				JobId = Guid.NewGuid().ToString(),
-				OriginWebsite = "nav",
-				/**/
-				advertExpires = item["expires"],
-				Accession = item["starttime"],
-				Admissioner = item["employer"]["name"],
-				AdmissionerDescription = item["employer"]["description"],
-				AdmissionerWebsite = item["employer"]["homepage"],
-				DescriptionHtml = item["description"],
+		public JobModel SetJobValues(JobModel job, dynamic item) {
+			job.OriginWebsite = "nav";
+			/**/
+			job.advertPublished = item["published"];
+			job.AdvertExpires = item["expires"];
+			job.Accession = item["starttime"];
+			job.Admissioner = item["employer"]["name"];
+			job.AdmissionerDescription = item["employer"]["description"];
+			job.AdmissionerWebsite = item["employer"]["homepage"];
+			job.DescriptionHtml = item["description"];
 
-				Deadline = item["applicationDue"],
-				LocationCity = item["workLocations"][0]["city"],
-				LocationAdress = item["workLocations"][0]["adress"],
-				LocationZipCode = item["workLocations"][0]["postalCode"],
-				Modified = item["updated"],
-				NumberOfPositions = item["positioncount"],
-				PositionTitle = item["title"],
-				PositionType = item["engagementtype"],
-				ForeignJobId = item["uuid"],
-				Sector = item["sector"],
-			};
+			job.Deadline = item["applicationDue"];
+			job.LocationCity = item["workLocations"][0]["city"];
+			job.LocationAdress = item["workLocations"][0]["adress"];
+			job.LocationZipCode = item["workLocations"][0]["postalCode"];
+			job.AdvertModified = item["updated"];
+			job.NumberOfPositions = item["positioncount"];
+			job.PositionTitle = item["title"];
+			job.PositionType = item["engagementtype"];
+			job.ForeignJobId = item["uuid"];
+			job.Sector = item["sector"];
+
+			return job;
+		}
+
+		public async Task<JobModel> TransferJobModelsAsync(dynamic item, bool update) {
+			if (update) {
+				JobModel jobToUpdate = jobHandler.GetJobListingByForeignId(Convert.ToString(item["uuid"]));
+				if (jobToUpdate.JobId == null) { return new JobModel(); }
+				jobToUpdate = SetJobValues(jobToUpdate, item);
+				jobHandler.UpdateJob(jobToUpdate);
+
+				return jobToUpdate;
+			}
+
+			JobModel job = new JobModel();
+			job.JobId = Guid.NewGuid().ToString();
+			job = SetJobValues(job, item);
 
 			JobCategoryModel category1 = new JobCategoryModel() {
 				Category = item["occupationCategories"][0]["level1"],
@@ -67,7 +118,14 @@ namespace web_scraper.Interfaces.Implementations {
 				Category = item["occupationCategories"][0]["level2"],
 				JobId = job.JobId,
 			};
-			//Add category to db
+			if (await jobCategoryHandler.JobIdHasCategory(category1.JobId, category1.Category)) {
+				jobCategoryHandler.AddJobCategory(category1);
+				jobCategoryHandler.SaveChanges();
+			}
+			if (await jobCategoryHandler.JobIdHasCategory(category2.JobId, category2.Category)) {
+				jobCategoryHandler.AddJobCategory(category2);
+				jobCategoryHandler.SaveChanges();
+			}
 
 			job.Admissioner = item["source"];
 			if (job.Admissioner == "null" || string.IsNullOrWhiteSpace(job.Admissioner)) {
@@ -80,6 +138,7 @@ namespace web_scraper.Interfaces.Implementations {
 			}
 
 			//Add job to db
+			await jobHandler.AddJobListing(job);
 			return job;
 		}
 	}
