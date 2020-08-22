@@ -27,9 +27,9 @@ namespace web_scraper.Interfaces.Implementations {
 			throw new NotImplementedException();
 		}
 
-		public async Task<bool> JobIdHasCategory(string AdvertId, string category) {
+		public async Task<bool> JobIdHasCategory(string JobId, string category) {
 			var query = from entity in db.JobCategories
-						where entity.JobId.Equals(AdvertId)
+						where entity.JobId.Equals(JobId)
 						&&
 						entity.Category.Equals(category)
 						select entity;
