@@ -146,7 +146,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 				/*Error handling of PositionTitle*/
 				CheckAndGetPositionTitle(fullJob, document);
 				/*Get MODIFIED date*/
-				fullJob.Modified = document.Body.SelectSingleNode("/html/body/main/div/div[4]/table/tbody/tr[2]/td").TextContent;
+				fullJob.AdvertModified = document.Body.SelectSingleNode("/html/body/main/div/div[4]/table/tbody/tr[2]/td").TextContent;
 				/*Get position TAGS*/
 				GetPositionTags(fullJob, document);
 				/*Get information from lists*/
