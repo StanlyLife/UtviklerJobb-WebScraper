@@ -15,6 +15,8 @@ namespace web_scraper.Interfaces {
 
 		JobModel GetJobListingById(string id);
 
+		JobModel GetJobListingByForeignId(string id);
+
 		/*Update*/
 
 		bool SaveChanges();

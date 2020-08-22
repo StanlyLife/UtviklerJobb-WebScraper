@@ -35,6 +35,18 @@ namespace web_scraper.Interfaces.Implementations {
 			}
 		}
 
+		public JobModel GetJobListingByForeignId(string foreignId) {
+			var query = from entity in db.JobListings
+						where entity.ForeignJobId.Equals(foreignId)
+						select entity;
+			if (query.Any()) {
+				return query.First();
+			} else {
+				Console.WriteLine($"did not find job with ID {foreignId}");
+				return new JobModel();
+			}
+		}
+
 		public void Purge() {
 			db.JobListings.Delete();
 			SaveChanges();
