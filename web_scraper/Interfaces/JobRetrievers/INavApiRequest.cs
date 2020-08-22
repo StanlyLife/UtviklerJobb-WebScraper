@@ -10,6 +10,8 @@ namespace web_scraper.Interfaces {
 
 		public Task<List<JobModel>> SendApiRequest();
 
-		public JobModel TransferJobModels(dynamic item);
+		public JobModel SetJobValues(JobModel job, dynamic item);
+
+		public Task<JobModel> TransferJobModelsAsync(dynamic item, bool update);
 	}
 }
