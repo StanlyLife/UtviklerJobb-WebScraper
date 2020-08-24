@@ -13,8 +13,8 @@ namespace web_scraper.Services {
 			Proxy proxy = new Proxy();
 			proxy.Kind = ProxyKind.Manual;
 			proxy.IsAutoDetect = false;
-			proxy.HttpProxy = "84.211.221.252:1080";
-			proxy.SslProxy = "84.211.221.252:1080";
+			proxy.HttpProxy = "80.120.86.242:46771";
+			proxy.SslProxy = "103.28.121.58:3128";
 			chromeoptions.Proxy = proxy;
 			chromeoptions.AddArgument("ignore-certificate-errors");
 			return chromeoptions;
