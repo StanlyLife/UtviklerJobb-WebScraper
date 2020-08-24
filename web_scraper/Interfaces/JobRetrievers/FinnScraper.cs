@@ -4,9 +4,11 @@ using AngleSharp.XPath;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using web_scraper.Interfaces.Database;
 using web_scraper.models;
 
 namespace web_scraper.Interfaces.JobRetrievers {
@@ -17,26 +19,44 @@ namespace web_scraper.Interfaces.JobRetrievers {
 		private readonly IJobCategoryHandler jobCategoryHandler;
 		private readonly IJobTagHandler jobTagHandler;
 		private readonly IJobIndustryHandler jobIndustryHandler;
+		private readonly IExistModified existModified;
 
 		public FinnScraper(
 			IJobHandler jobHandler,
 			IJobCategoryHandler jobCategoryHandler,
 			IJobTagHandler jobTagHandler,
-			IJobIndustryHandler jobIndustryHandler
+			IJobIndustryHandler jobIndustryHandler,
+			IExistModified existModified
 			) {
 			this.jobHandler = jobHandler;
 			this.jobCategoryHandler = jobCategoryHandler;
 			this.jobTagHandler = jobTagHandler;
 			this.jobIndustryHandler = jobIndustryHandler;
+			this.existModified = existModified;
 		}
 
-		public async Task<List<JobModel>> GetPosition(string url, List<JobModel> results) {
+		/*
+		 * TODO
+		 * - Add support for categories (?)
+		 * - Remove "<p><br /></p>"
+		 */
+
+		public async Task<List<JobModel>> CheckForUpdates() {
+			var url = websiteUrl;
+			List<JobModel> newJobs = new List<JobModel>();
+			List<JobModel> existingJobs = new List<JobModel>();
 			var config = Configuration.Default.WithDefaultLoader();
 			var context = BrowsingContext.New(config);
-			var document = await context.OpenAsync(url);
 
-			// Debug
-			//_logger.LogInformation(document.DocumentElement.OuterHtml);
+			var jobLists = await GetJobAds(url, newJobs, existingJobs, context);
+
+			newJobs = await GetPositionListing(jobLists[0], context);
+			existingJobs = await CheckModifiedAndUpdate(jobLists[1], context);
+			return newJobs;
+		}
+
+		private async Task<List<List<JobModel>>> GetJobAds(string url, List<JobModel> newJobs, List<JobModel> existingJobs, IBrowsingContext context) {
+			var document = await context.OpenAsync(url);
 
 			var advertrows = document.QuerySelectorAll("article");
 			if (advertrows != null) {
@@ -46,99 +66,117 @@ namespace web_scraper.Interfaces.JobRetrievers {
 						OriginWebsite = "Finn"
 					};
 
-					var position = row.QuerySelector(".ads__unit__content__keys");
 					var info = row.QuerySelector(".ads__unit__link");
+					job.AdvertUrl = "https://finn.no" + info.GetAttribute("href");
+					job.ForeignJobId = info.GetAttribute("id");
+					/*
+					 * If job already exists in database
+					 * Add to existingJobs list
+					 * Check if modified
+					 */
+					if (existModified.CheckIfExists(job.ForeignJobId)) {
+						existingJobs.Add(job);
+						Console.WriteLine($"Job already exists code: {job.ForeignJobId}");
+						continue;
+					}
+
+					var position = row.QuerySelector(".ads__unit__content__keys");
 
 					if (position != null) {
-						//Executing this if statement together with the one above causes
-						//NullPointerException
 						if (string.IsNullOrWhiteSpace(position.TextContent)) {
 							job.PositionHeadline = info.TextContent;
 						} else {
 							job.PositionHeadline = position.TextContent;
 							job.ShortDescription = info.TextContent;
 						}
-						Console.WriteLine(job.PositionHeadline);
+						Debug.WriteLine(job.PositionHeadline);
 					} else {
 						job.PositionHeadline = info.TextContent;
 					}
 
 					var imageUrl = row.QuerySelector(".img-format__img");
 					job.ImageUrl = imageUrl.GetAttribute("src");
-					job.AdvertUrl = "https://finn.no" + info.GetAttribute("href");
 
 					var contentList = row.QuerySelectorAll(".ads__unit__content__list");
 					try {
 						job.Admissioner = contentList[0].TextContent;
-						//TODO
-						//	Format to integer
 						job.NumberOfPositions = contentList[1].TextContent;
 					} catch (Exception e) {
 						Console.WriteLine($"Error occured when scraping {job.AdvertUrl} --- {e}");
 					}
 					await jobHandler.AddJobListing(job);
 					jobHandler.SaveChanges();
-					results.Add(job);
+					newJobs.Add(job);
 				}
 			}
 
 			// Check if a next page link is present
-			string NextPageUrlFormat = "https://www.finn.no/job/fulltime/search.html";
-			string NextPageUrl = "";
+			string nextPageUrlFormat = "https://www.finn.no/job/fulltime/search.html";
 
-			var nextPageLink = document.QuerySelector(".button--icon-right");
-			if (nextPageLink != null) {
-				NextPageUrl = NextPageUrlFormat + nextPageLink.GetAttribute("href");
-				Console.WriteLine("\n neste side funnet!");
-				Console.WriteLine(nextPageLink.GetAttribute("href") + "\n");
-			} else {
-				Console.WriteLine("\nFINISHED\n");
-				NextPageUrlFormat = "";
-			}
+			string NextPageUrl = GetNextPageUrl(document, nextPageUrlFormat);
 
 			// If next page link is present recursively call the function again with the new url
 			if (!String.IsNullOrEmpty(NextPageUrl)) {
-				Console.WriteLine("checking next page: " + NextPageUrlFormat);
-				return await GetPosition(NextPageUrl, results);
+				Console.WriteLine("checking next page: " + nextPageUrlFormat);
+				await GetJobAds(NextPageUrl, newJobs, existingJobs, context);
+			} else {
+				Console.WriteLine($"nextpageurl is empty or null");
 			}
-			return results;
+
+			List<List<JobModel>> jobLists = new List<List<JobModel>>();
+			jobLists.Add(newJobs);
+			jobLists.Add(existingJobs);
+			return jobLists;
 		}
 
-		public async Task<List<JobModel>> CheckForUpdates() {
-			// We create the container for the data we want
-			List<JobModel> jobList = new List<JobModel>();
-			var url = websiteUrl;
+		private async Task<List<JobModel>> CheckModifiedAndUpdate(List<JobModel> existingJobs, IBrowsingContext context) {
+			List<JobModel> modifiedJobs = new List<JobModel>();
+			List<JobModel> unModifiedJobs = new List<JobModel>();
 
-			/**
-			 * GetPageData will recursively fill the container with data
-			 * and the await keyword guarantees that nothing else is done
-			 * before that operation is complete.
-			 */
-			jobList = await GetPosition(url, jobList);
+			foreach (var job in existingJobs) {
+				var document = await context.OpenAsync(job.AdvertUrl);
+				var descriptionHtml = document.QuerySelector(".import-decoration").ToHtml();
 
-			await GetPositionListing(jobList);
+				//Check if Ad has expired
+				//Apply button is always disabled when ad has expired
+				if (document.QuerySelector(".button--is-disabled") != null) {
+					Console.WriteLine($"Position has expired at: {job.AdvertUrl} with code: {job.ForeignJobId}");
+				}
 
-			return jobList;
+				if (existModified.CheckIfModified(job.ForeignJobId, descriptionHtml)) {
+					modifiedJobs.Add(jobHandler.GetJobListingByForeignId(job.ForeignJobId));
+				} else {
+					unModifiedJobs.Add(job);
+				}
+			}
+			modifiedJobs = await GetPositionListing(modifiedJobs, context);
+			//Instead of creating a new list
+			//I use existing list despite naming consistency
+			modifiedJobs.AddRange(unModifiedJobs);
+			return modifiedJobs;
 		}
 
-		//
+		private string GetNextPageUrl(IDocument document, string NextPageUrlFormat) {
+			string nextPageUrl = "";
+			var nextPageLink = document.QuerySelector(".button--icon-right");
+			if (nextPageLink != null) {
+				nextPageUrl = NextPageUrlFormat + nextPageLink.GetAttribute("href");
+				Debug.WriteLine($"\n neste side funnet! \n {nextPageUrl} \n");
+			} else {
+				Debug.WriteLine("\nFINISHED\nNo next page cevron!");
+				NextPageUrlFormat = "";
+			}
+			return nextPageUrl;
+		}
+
 		//	- Seeds model with information retrieved from the individual position url
-		public async Task<List<JobModel>> GetPositionListing(List<JobModel> jobs) {
-			var config = Configuration.Default.WithDefaultLoader();
-			var context = BrowsingContext.New(config);
-
+		private async Task<List<JobModel>> GetPositionListing(List<JobModel> jobs, IBrowsingContext context) {
 			List<JobModel> jobList = new List<JobModel>();
 			foreach (var job in jobs) {
 				JobModel fullJob = jobHandler.GetJobListingById(job.JobId);
 				var document = await context.OpenAsync(job.AdvertUrl);
-				//ToDo
-				//Remove "<p><br /></p>"
-				//Remove "<p>&nbsp;</p>"
 				fullJob.DescriptionHtml = document.QuerySelector(".import-decoration").ToHtml();
 				fullJob.Description = document.QuerySelector(".import-decoration").TextContent;
-
-				/*Get Finn KODE*/
-				fullJob.ForeignJobId = document.QuerySelector(".u-select-all").TextContent;
 
 				/*Get Admissioner WEBSITE*/
 				await GetAdmissionerWebsite(context, fullJob, document);
@@ -159,60 +197,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			return jobList;
 		}
 
-		//
-		//	- If position title is a number, change position title.
-		//	- This method catches faulty strings due to some ads not adding a position title
-		//	  and the extracted position title on website matches the xpath of deadline.
-		public void CheckAndGetPositionTitle(JobModel fullJob, IDocument document) {
-			var positionTitle = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[1]/div/section[2]/dl/dd[2]").TextContent;
-			if (Regex.IsMatch(positionTitle, @"^\d")) {
-				fullJob.PositionTitle = fullJob.PositionHeadline;
-			} else {
-				fullJob.PositionTitle = positionTitle;
-			}
-		}
-
-		public async Task GetAdmissionerWebsite(IBrowsingContext context, JobModel fullJob, IDocument document) {
-			var websiteNode = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[2]/div/div/div/div/a/@href");
-			var websiteElement = document.QuerySelector(".img-format--ratio16by9 > a");
-			var websiteQueryElement = document.QuerySelector(".u-b1");
-			if (websiteNode != null && websiteNode.ToString() != "AngleSharp.Html.Dom.HtmlAnchorElement") {
-				fullJob.AdmissionerWebsite = websiteNode.ToString();
-			} else if (websiteElement != null) {
-				fullJob.AdmissionerWebsite = websiteElement.GetAttribute("href");
-			} else if (websiteQueryElement != null) {
-				fullJob.AdmissionerWebsite = websiteQueryElement.GetAttribute("href");
-			}
-
-			if (fullJob.AdmissionerWebsite != null && fullJob.AdmissionerWebsite.StartsWith("https://www.finn.no/")) {
-				var innerDocument = await context.OpenAsync(fullJob.AdmissionerWebsite);
-				var AdmissionerWebsiteHref = innerDocument.QuerySelector(".u-pr16");
-				if (AdmissionerWebsiteHref != null)
-					fullJob.AdmissionerWebsite = AdmissionerWebsiteHref.GetAttribute("href");
-			}
-		}
-
-		public void GetPositionTags(JobModel fullJob, IDocument document) {
-			Console.WriteLine($"Tags for: {fullJob.AdvertUrl}");
-			var tags = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[1]/div/section[5]/p");
-			if (tags == null) {
-				tags = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[1]/div/section[6]/p");
-				if (tags == null)
-					return;
-			}
-			char[] spearator = { ',' };
-			String[] strlist = tags.TextContent.Split(spearator);
-			foreach (string tag in strlist) {
-				JobTagsModel jobTag = new JobTagsModel {
-					JobId = fullJob.JobId,
-					Tag = tag.Trim()
-				};
-				jobTagHandler.AddJobTag(jobTag);
-				jobTagHandler.SaveChanges();
-			}
-		}
-
-		public async Task GetPositionInfo(JobModel fullJob, IDocument document) {
+		private async Task GetPositionInfo(JobModel fullJob, IDocument document) {
 			var jobInfo = document.QuerySelectorAll(".definition-list");
 
 			string previousHead = "";
@@ -270,7 +255,60 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			}
 		}
 
-		public async Task AddIndustry(JobModel fullJob, IElement des) {
+		//
+		//	- If position title is a number, change position title.
+		//	- This method catches faulty strings due to some ads not adding a position title
+		//	  and the extracted position title on website matches the xpath of deadline.
+		private void CheckAndGetPositionTitle(JobModel fullJob, IDocument document) {
+			var positionTitle = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[1]/div/section[2]/dl/dd[2]").TextContent;
+			if (Regex.IsMatch(positionTitle, @"^\d")) {
+				fullJob.PositionTitle = fullJob.PositionHeadline;
+			} else {
+				fullJob.PositionTitle = positionTitle;
+			}
+		}
+
+		private async Task GetAdmissionerWebsite(IBrowsingContext context, JobModel fullJob, IDocument document) {
+			var websiteNode = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[2]/div/div/div/div/a/@href");
+			var websiteElement = document.QuerySelector(".img-format--ratio16by9 > a");
+			var websiteQueryElement = document.QuerySelector(".u-b1");
+			if (websiteNode != null && websiteNode.ToString() != "AngleSharp.Html.Dom.HtmlAnchorElement") {
+				fullJob.AdmissionerWebsite = websiteNode.ToString();
+			} else if (websiteElement != null) {
+				fullJob.AdmissionerWebsite = websiteElement.GetAttribute("href");
+			} else if (websiteQueryElement != null) {
+				fullJob.AdmissionerWebsite = websiteQueryElement.GetAttribute("href");
+			}
+
+			if (fullJob.AdmissionerWebsite != null && fullJob.AdmissionerWebsite.StartsWith("https://www.finn.no/")) {
+				var innerDocument = await context.OpenAsync(fullJob.AdmissionerWebsite);
+				var AdmissionerWebsiteHref = innerDocument.QuerySelector(".u-pr16");
+				if (AdmissionerWebsiteHref != null)
+					fullJob.AdmissionerWebsite = AdmissionerWebsiteHref.GetAttribute("href");
+			}
+		}
+
+		private void GetPositionTags(JobModel fullJob, IDocument document) {
+			Console.WriteLine($"Tags for: {fullJob.AdvertUrl}");
+			var tags = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[1]/div/section[5]/p");
+			if (tags == null) {
+				tags = document.Body.SelectSingleNode("/html/body/main/div/div[3]/div[1]/div/section[6]/p");
+				if (tags == null)
+					return;
+			}
+			char[] spearator = { ',' };
+			String[] strlist = tags.TextContent.Split(spearator);
+			foreach (string tag in strlist) {
+				JobTagsModel jobTag = new JobTagsModel {
+					JobId = fullJob.JobId,
+					Tag = tag.Trim()
+				};
+				jobTagHandler.AddJobTag(jobTag);
+				jobTagHandler.SaveChanges();
+			}
+		}
+
+		private async Task AddIndustry(JobModel fullJob, IElement des) {
 			var industry = des.TextContent.Replace(",", "").Trim();
 			JobIndustryModel JobIndustry = new JobIndustryModel {
 				JobId = fullJob.JobId,
