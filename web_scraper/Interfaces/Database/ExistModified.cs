@@ -26,7 +26,7 @@ namespace web_scraper.Interfaces.Database {
 			return false;
 		}
 
-		//returns true if job description != scraped job description
+		//returns true if job.descriptionHtml != descriptionHtml
 		public bool CheckIfModified(string foreignId, string descriptionHtml) {
 			var query = from entity in db.JobListings
 						where
@@ -37,7 +37,7 @@ namespace web_scraper.Interfaces.Database {
 			if (query.Any()) {
 				return false;
 			}
-			Debug.WriteLine($"Joblisting with foreignkey {foreignId} - Nav - is modified, updating!");
+			Debug.WriteLine($"Joblisting with foreignkey {foreignId} - is modified!");
 			return true;
 		}
 	}
