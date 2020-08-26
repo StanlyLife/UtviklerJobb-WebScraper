@@ -10,6 +10,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using web_scraper.Interfaces.Database;
 using web_scraper.Lists.Categories.jobreg;
 using web_scraper.models;
 using web_scraper.Services;
@@ -25,13 +26,20 @@ namespace web_scraper.Interfaces.JobRetrievers {
 		private readonly IJobHandler jobHandler;
 		private readonly IJobCategoryHandler jobCategoryHandler;
 		private readonly IJobTagHandler jobTagHandler;
+		private readonly IExistModified existModified;
 		private int iteration = 0;
 		private int currentPage = 1;
 
-		public JobregScraper(IJobHandler jobHandler, IJobCategoryHandler jobCategoryHandler, IJobTagHandler jobTagHandler) {
+		public JobregScraper(
+			IJobHandler jobHandler,
+			IJobCategoryHandler jobCategoryHandler,
+			IJobTagHandler jobTagHandler,
+			IExistModified existModified
+			) {
 			this.jobHandler = jobHandler;
 			this.jobCategoryHandler = jobCategoryHandler;
 			this.jobTagHandler = jobTagHandler;
+			this.existModified = existModified;
 		}
 
 		public async Task<List<JobModel>> CheckForUpdates(bool checkCategories) {
@@ -70,7 +78,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			return jobList;
 		}
 
-		public async Task GetJobsFromCategories(List<JobModel> jobList, ChromeDriver driver, KeyValuePair<string, List<string>> branch, string category, string categoryWebsiteUrl) {
+		private async Task GetJobsFromCategories(List<JobModel> jobList, ChromeDriver driver, KeyValuePair<string, List<string>> branch, string category, string categoryWebsiteUrl) {
 			/*Current category list*/
 			var categoryQueryList = new List<string>();
 			categoryQueryList.Add(branch.Key);
@@ -87,7 +95,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			Console.WriteLine($"@@@ Finished one category, added {tempList.Count()} jobs in joblist: {jobList.Count()} @@@");
 		}
 
-		public async Task<List<JobModel>> GetListingInfoAsync(List<JobModel> jobs, ChromeDriver driver) {
+		private async Task<List<JobModel>> GetListingInfoAsync(List<JobModel> jobs, ChromeDriver driver) {
 			var config = Configuration.Default.WithDefaultLoader();
 			var context = BrowsingContext.New(config);
 
@@ -106,7 +114,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			return jobs;
 		}
 
-		public void GetListingTableContent(JobModel job, IDocument document) {
+		private void GetListingTableContent(JobModel job, IDocument document) {
 			var tableInfoList = document.QuerySelectorAll("tr");
 			foreach (var row in tableInfoList) {
 				var title = row.QuerySelector(".table-info-title");
@@ -155,7 +163,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			}
 		}
 
-		public void GetListingAdmissionerInfo(JobModel job, IDocument document) {
+		private void GetListingAdmissionerInfo(JobModel job, IDocument document) {
 			var contactPerson = document.Body.SelectSingleNode("/html/body/div[1]/header/div[2]/div/div/div/div/div[1]/div/div[2]/div/div[4]/div[2]/div[2]/span[1]/b");
 			if (contactPerson != null) {
 				job.AdmissionerContactPerson = contactPerson.TextContent;
@@ -191,7 +199,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			}
 		}
 
-		public async Task<List<JobModel>> GetJobs(string url, List<JobModel> jobList, ChromeDriver driver, List<string> categoryQueryList) {
+		private async Task<List<JobModel>> GetJobs(string url, List<JobModel> jobList, ChromeDriver driver, List<string> categoryQueryList) {
 			if (iteration >= GlobalMaxIteration || currentPage >= MaxPagePerQuery) {
 				Console.WriteLine($"Max limit reached, iterations {iteration}/{GlobalMaxIteration} : {currentPage}/{MaxPagePerQuery}");
 				return jobList;
@@ -285,7 +293,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			return jobList;
 		}
 
-		public string GetNextPageUrl(string result, ReadOnlyCollection<IWebElement> nextPageLink) {
+		private string GetNextPageUrl(string result, ReadOnlyCollection<IWebElement> nextPageLink) {
 			foreach (var next in nextPageLink) {
 				if (next.Text.Trim() == (currentPage + 1).ToString() || next.Text == " > " || next.Text.Trim() == ">") {
 					result = GenerateNextPageUrl(next.FindElement(By.CssSelector("a")));
@@ -303,7 +311,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			return result;
 		}
 
-		public string GenerateNextPageUrl(IWebElement nextPageLink) {
+		private string GenerateNextPageUrl(IWebElement nextPageLink) {
 			var NextPageHref = nextPageLink.GetAttribute("href");
 			NextPageHref = NextPageHref.Trim();
 			int pFrom = NextPageHref.IndexOf("'") + "'".Length;
@@ -313,7 +321,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			return result;
 		}
 
-		public void GetJobAdInfo(IWebElement jobItem, JobModel job, string advertUrl) {
+		private void GetJobAdInfo(IWebElement jobItem, JobModel job, string advertUrl) {
 			var header = jobItem.FindElement(By.CssSelector("h6 > a")).Text;
 			job.PositionHeadline = header;
 			Console.WriteLine($"JOB: {header} \n");
@@ -337,7 +345,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			}
 		}
 
-		public void GetForeignJobId(JobModel job, string advertUrl) {
+		private void GetForeignJobId(JobModel job, string advertUrl) {
 			var IdFrom = advertUrl.LastIndexOf("-") + "-".Length;
 			int IdTo = advertUrl.LastIndexOf(".html");
 			var foreignJobId = advertUrl.Substring(IdFrom, IdTo - IdFrom);
