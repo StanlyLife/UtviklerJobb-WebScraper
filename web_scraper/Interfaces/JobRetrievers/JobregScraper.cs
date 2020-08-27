@@ -50,35 +50,39 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			chromeoptions = seleniumConfigService.SetDefaultChromeConfig(chromeoptions);
 			var driver = new ChromeDriver(chromeoptions);
 			/**/
-			JobAdsTimer.Start();
+
 			if (checkCategories) {
-				JobregCategories jobregCategories = new JobregCategories();
-				//Get parent category
-				foreach (var branch in jobregCategories.BranchLinkCategories) {
-					//Get sub category
-					if (iteration >= GlobalMaxIteration) { break; };
-					foreach (var category in branch.Value) {
-						if (iteration >= GlobalMaxIteration) {
-							Console.WriteLine($"Max limit reached, iterations {iteration}/{GlobalMaxIteration} : {currentPage}/{MaxPagePerQuery}");
-							break;
-						}
-						var categoryWebsiteUrl = websiteUrl + branch.Key + category;
-						Console.WriteLine($"\nCategory: {jobregCategories.Categories.GetValueOrDefault(category)}");
-						await GetJobsFromCategories(jobList, driver, branch, category, categoryWebsiteUrl);
-					}
-				}
+				jobList = await GetJobsWithCategories(jobList, driver);
 			} else {
 				jobList = await GetJobs(websiteUrl, new List<JobModel>(), driver, new List<string>());
 			}
-			JobAdsTimer.Stop();
+
 			/**/
-			JobListingTimer.Start();
 			jobList = await GetListingInfoAsync(jobList, driver);
-			JobListingTimer.Stop();
 			return jobList;
 		}
 
-		private async Task GetJobsFromCategories(List<JobModel> jobList, ChromeDriver driver, KeyValuePair<string, List<string>> branch, string category, string categoryWebsiteUrl) {
+		private async Task<List<JobModel>> GetJobsWithCategories(List<JobModel> jobList, ChromeDriver driver) {
+			JobregCategories jobregCategories = new JobregCategories();
+			//Get parent category
+			foreach (var branch in jobregCategories.BranchLinkCategories) {
+				//Get sub category
+				if (iteration >= GlobalMaxIteration) { break; };
+				foreach (var category in branch.Value) {
+					if (iteration >= GlobalMaxIteration) {
+						Console.WriteLine($"Max limit reached, iterations {iteration}/{GlobalMaxIteration} : {currentPage}/{MaxPagePerQuery}");
+						break;
+					}
+					var categoryWebsiteUrl = websiteUrl + branch.Key + category;
+					Console.WriteLine($"\nCategory: {jobregCategories.Categories.GetValueOrDefault(category)}");
+					jobList = await GetJobsFromCategories(jobList, driver, branch, category, categoryWebsiteUrl);
+				}
+			}
+
+			return jobList;
+		}
+
+		private async Task<List<JobModel>> GetJobsFromCategories(List<JobModel> jobList, ChromeDriver driver, KeyValuePair<string, List<string>> branch, string category, string categoryWebsiteUrl) {
 			/*Current category list*/
 			var categoryQueryList = new List<string>();
 			categoryQueryList.Add(branch.Key);
@@ -93,6 +97,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			Console.WriteLine($"@@@ Finished one category, currently {jobList.Count()} jobs in joblist @@@");
 			jobList.AddRange(tempList);
 			Console.WriteLine($"@@@ Finished one category, added {tempList.Count()} jobs in joblist: {jobList.Count()} @@@");
+			return jobList;
 		}
 
 		private async Task<List<JobModel>> GetListingInfoAsync(List<JobModel> jobs, ChromeDriver driver) {
@@ -214,6 +219,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			wait.Until(ExpectedConditions.ElementExists(By.CssSelector(".job-item")));
 			IReadOnlyList<IWebElement> jobs = driver.FindElements(By.CssSelector(".job-item"));
 			JobregCategories jobregCategories = new JobregCategories();
+			List<JobModel> existingJobs = new List<JobModel>();
 			foreach (var jobItem in jobs) {
 				JobModel job = new JobModel() {
 					OriginWebsite = "jobreg",
@@ -243,18 +249,23 @@ namespace web_scraper.Interfaces.JobRetrievers {
 				if (advertUrl != null) {
 					/**/
 					GetForeignJobId(job, advertUrl.GetAttribute("href"));
-					/**/
-					GetJobAdInfo(jobItem, job, advertUrl.GetAttribute("href"));
-					/**/
-					if (jobList.Contains(job)) {
+					if (existingJobs.Contains(job)) {
 						//Honeypot detection
 						//TODO FIX
 						Console.WriteLine($"@@@@@@ \nPossible honeypot at {websiteUrl} \ncurrent page {currentPage} \nduplicate jobId {job.ForeignJobId} \njob url {job.AdvertUrl} \n@@@@@@");
 						return jobList;
 					}
+					if (existModified.CheckIfExists(job.ForeignJobId)) {
+						Console.WriteLine($"JOB WITH id {job.ForeignJobId} and url {job.AdvertUrl} already exists");
+						existingJobs.Add(job);
+						continue;
+					}
+					/**/
+					GetJobAdInfo(jobItem, job, advertUrl.GetAttribute("href"));
+					/**/
 					jobList.Add(job);
 					foreach (var category in categoryList) {
-						jobCategoryHandler.AddJobCategory(category);
+						await jobCategoryHandler.AddJobCategory(category);
 						jobCategoryHandler.SaveChanges();
 					}
 				}
