@@ -10,21 +10,17 @@ namespace web_scraper.Interfaces {
 
 		bool SaveChanges();
 
-		/*Purge table*/
-
 		void Purge();
-
-		/*Create*/
 
 		Task<JobCategoryModel> AddJobCategory(JobCategoryModel category);
 
-		/*Read*/
+		/*
+		 * Returns TRUE if job has category
+		 */
 
 		Task<bool> JobIdHasCategory(string AdvertId, string category);
 
 		Task<JobTagsModel> GetJobCategoriesById(string AdvertId);
-
-		/*Delete*/
 
 		Task<JobTagsModel> DeleteJobCategoriesById(string AdvertId);
 	}
