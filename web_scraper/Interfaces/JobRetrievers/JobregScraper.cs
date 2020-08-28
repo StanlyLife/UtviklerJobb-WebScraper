@@ -205,19 +205,31 @@ namespace web_scraper.Interfaces.JobRetrievers {
 		}
 
 		private async Task<List<JobModel>> GetJobs(string url, List<JobModel> jobList, ChromeDriver driver, List<string> categoryQueryList) {
+			//Check if max iterations are reached
 			if (iteration >= GlobalMaxIteration || currentPage >= MaxPagePerQuery) {
 				Console.WriteLine($"Max limit reached, iterations {iteration}/{GlobalMaxIteration} : {currentPage}/{MaxPagePerQuery}");
 				return jobList;
 			}
+			//Setup selenium webdriver
 			driver.Navigate().GoToUrl(url);
 			WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20));
 			wait.Until(ExpectedConditions.ElementExists(By.XPath("/html/body/div/header/div/div/div/div[2]/b[2]")));
+			//Check if amount of jobs > 1
+			//Some categories are empty
 			if (driver.FindElement(By.XPath("/html/body/div/header/div/div/div/div[2]/b[2]")).Text == "0") {
 				return jobList;
 			}
 			iteration++;
+			//Selenium wait
 			wait.Until(ExpectedConditions.ElementExists(By.CssSelector(".job-item")));
 			IReadOnlyList<IWebElement> jobs = driver.FindElements(By.CssSelector(".job-item"));
+
+			/*##################
+			#                  #
+			#  Start scraping  #
+			#                  #
+			##################*/
+
 			JobregCategories jobregCategories = new JobregCategories();
 			List<JobModel> existingJobs = new List<JobModel>();
 			foreach (var jobItem in jobs) {
@@ -225,6 +237,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 					OriginWebsite = "jobreg",
 					JobId = Guid.NewGuid().ToString(),
 				};
+
 				List<JobCategoryModel> categoryList = new List<JobCategoryModel>();
 
 				for (int i = 0; i < categoryQueryList.Count(); i++) {
@@ -248,35 +261,40 @@ namespace web_scraper.Interfaces.JobRetrievers {
 				}
 				if (advertUrl != null) {
 					/**/
-					GetForeignJobId(job, advertUrl.GetAttribute("href"));
+					job.AdvertUrl = advertUrl.GetAttribute("href");
+					GetForeignJobId(job, job.AdvertUrl);
+					//Check for infinite iterations
 					if (existingJobs.Contains(job)) {
-						//Honeypot detection
-						//TODO FIX
 						Console.WriteLine($"@@@@@@ \nPossible honeypot at {websiteUrl} \ncurrent page {currentPage} \nduplicate jobId {job.ForeignJobId} \njob url {job.AdvertUrl} \n@@@@@@");
 						return jobList;
 					}
+					//Check if already scraped
 					if (existModified.CheckIfExists(job.ForeignJobId)) {
 						Console.WriteLine($"JOB WITH id {job.ForeignJobId} and url {job.AdvertUrl} already exists");
 						existingJobs.Add(job);
 						continue;
 					}
 					/**/
-					GetJobAdInfo(jobItem, job, advertUrl.GetAttribute("href"));
+					job = GetJobAdInfo(jobItem, job /*, advertUrl.GetAttribute("href")*/);
 					/**/
 					jobList.Add(job);
 					foreach (var category in categoryList) {
-						await jobCategoryHandler.AddJobCategory(category);
-						jobCategoryHandler.SaveChanges();
+						if (!await jobCategoryHandler.JobIdHasCategory(category.JobId, category.Category)) {
+							await jobCategoryHandler.AddJobCategory(category);
+							jobCategoryHandler.SaveChanges();
+						}
 					}
 				}
 			}
 			Console.WriteLine($"Found {jobs.Count} jobs at page {currentPage}!");
 
-			if (jobs.Count < 15) {
-				//The default amount of jobs = 15
-				//If default amount of jobs < 15 it means it is the last page
-				return jobList;
-			}
+			foreach ()
+
+				if (jobs.Count < 15) {
+					//The default amount of jobs = 15
+					//If default amount of jobs < 15 it means it is the last page
+					return jobList;
+				}
 
 			/*
 			 *
@@ -332,12 +350,12 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			return result;
 		}
 
-		private void GetJobAdInfo(IWebElement jobItem, JobModel job, string advertUrl) {
+		private JobModel GetJobAdInfo(IWebElement jobItem, JobModel job/*, string advertUrl*/) {
 			var header = jobItem.FindElement(By.CssSelector("h6 > a")).Text;
 			job.PositionHeadline = header;
 			Console.WriteLine($"JOB: {header} \n");
 			/**/
-			job.AdvertUrl = advertUrl;
+			//job.AdvertUrl = advertUrl;
 			/**/
 			var shortDesc = jobItem.FindElement(By.CssSelector(".description > .adBodySmall")).Text;
 			job.ShortDescription = shortDesc;
@@ -354,6 +372,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			} catch (NoSuchElementException) {
 				Console.WriteLine($"No image for job ad at : {job.AdvertUrl}");
 			}
+			return job;
 		}
 
 		private void GetForeignJobId(JobModel job, string advertUrl) {
