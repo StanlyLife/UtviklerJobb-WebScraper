@@ -28,6 +28,7 @@
 		<PackageReference Include="Selenium.Firefox.WebDriver" Version="0.17.0" />
 		<PackageReference Include="Selenium.Support" Version="3.141.0" />
 		<PackageReference Include="Selenium.WebDriver" Version="3.141.0" />
+		<PackageReference Include="WebDriverManager" Version="2.9.3" />
 		<PackageReference Include="Z.EntityFramework.Plus.EFCore" Version="3.0.54" />
 	</ItemGroup>
 </Project>
