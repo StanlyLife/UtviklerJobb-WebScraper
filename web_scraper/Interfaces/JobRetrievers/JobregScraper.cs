@@ -3,17 +3,22 @@ using AngleSharp.Dom;
 using AngleSharp.XPath;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Firefox;
+using OpenQA.Selenium.Remote;
 using OpenQA.Selenium.Support.UI;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using web_scraper.Interfaces.Database;
 using web_scraper.Lists.Categories.jobreg;
 using web_scraper.models;
 using web_scraper.Services;
+using WebDriverManager;
+using WebDriverManager.DriverConfigs.Impl;
 
 namespace web_scraper.Interfaces.JobRetrievers {
 
@@ -44,13 +49,14 @@ namespace web_scraper.Interfaces.JobRetrievers {
 
 		public async Task<List<JobModel>> CheckForUpdates(bool checkCategories) {
 			List<JobModel> jobList = new List<JobModel>();
-			/**/
+			new DriverManager().SetUpDriver(new ChromeConfig());
+			/*Config*/
 			var chromeoptions = new ChromeOptions();
 			var seleniumConfigService = new SeleniumConfigService();
 			chromeoptions = seleniumConfigService.SetDefaultChromeConfig(chromeoptions);
 			var driver = new ChromeDriver(chromeoptions);
-			/**/
 
+			/**/
 			if (checkCategories) {
 				jobList = await GetJobsWithCategories(jobList, driver);
 			} else {
@@ -59,6 +65,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 
 			/**/
 			jobList = await GetListingInfoAsync(jobList, driver);
+			driver.Quit();
 			return jobList;
 		}
 
@@ -108,7 +115,9 @@ namespace web_scraper.Interfaces.JobRetrievers {
 				var document = await context.OpenAsync(job.AdvertUrl);
 				Console.WriteLine($"\nURL: {job.AdvertUrl}");
 				/*Admissioner*/
-				GetListingAdmissionerInfo(job, document);
+				if (GetListingAdmissionerInfo(job, document)) {
+					jobs.Remove(job);
+				}
 				/*GetTableContent*/
 				GetListingTableContent(job, document);
 				jobHandler.AddJobListing(job);
@@ -168,7 +177,18 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			}
 		}
 
-		private void GetListingAdmissionerInfo(JobModel job, IDocument document) {
+		private bool GetListingAdmissionerInfo(JobModel job, IDocument document) {
+			var desc = document.QuerySelector(".showBody");
+			if (desc != null) {
+				job.DescriptionHtml = desc.ToHtml();
+				if (existModified.CheckIfExists(job.ForeignJobId) && !existModified.CheckIfModified(job.ForeignJobId, job.DescriptionHtml)) {
+					return true;
+				}
+				job.Description = desc.TextContent;
+			} else {
+				Console.WriteLine($"No jobdescription found for positon: {job.AdvertUrl}");
+			}
+
 			var contactPerson = document.Body.SelectSingleNode("/html/body/div[1]/header/div[2]/div/div/div/div/div[1]/div/div[2]/div/div[4]/div[2]/div[2]/span[1]/b");
 			if (contactPerson != null) {
 				job.AdmissionerContactPerson = contactPerson.TextContent;
@@ -179,13 +199,6 @@ namespace web_scraper.Interfaces.JobRetrievers {
 				job.AdmissionerContactPersonTelephone = contactPersonTelepone.TextContent;
 			}
 			/*Description*/
-			var desc = document.QuerySelector(".showBody");
-			if (desc != null) {
-				job.DescriptionHtml = desc.ToHtml();
-				job.Description = desc.TextContent;
-			} else {
-				Console.WriteLine($"No jobdescription found for positon: {job.AdvertUrl}");
-			}
 			/*tags*/
 			var tags = document.QuerySelectorAll(".label-default");
 			if (tags != null) {
@@ -202,10 +215,14 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			} else {
 				Console.WriteLine($"No tags found for positon: {job.AdvertUrl}");
 			}
+			return true;
 		}
 
 		private async Task<List<JobModel>> GetJobs(string url, List<JobModel> jobList, ChromeDriver driver, List<string> categoryQueryList) {
 			//Check if max iterations are reached
+
+			#region refactor? to GetJobsSetup()
+
 			if (iteration >= GlobalMaxIteration || currentPage >= MaxPagePerQuery) {
 				Console.WriteLine($"Max limit reached, iterations {iteration}/{GlobalMaxIteration} : {currentPage}/{MaxPagePerQuery}");
 				return jobList;
@@ -214,15 +231,23 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			driver.Navigate().GoToUrl(url);
 			WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20));
 			wait.Until(ExpectedConditions.ElementExists(By.XPath("/html/body/div/header/div/div/div/div[2]/b[2]")));
-			//Check if amount of jobs > 1
-			//Some categories are empty
+
+			/*
+			 *Check if amount of jobs > 1
+			 *Some categories are empty
+			 *
+			 */
+
 			if (driver.FindElement(By.XPath("/html/body/div/header/div/div/div/div[2]/b[2]")).Text == "0") {
 				return jobList;
 			}
 			iteration++;
+
 			//Selenium wait
 			wait.Until(ExpectedConditions.ElementExists(By.CssSelector(".job-item")));
-			IReadOnlyList<IWebElement> jobs = driver.FindElements(By.CssSelector(".job-item"));
+			IReadOnlyList<IWebElement> jobAdverts = driver.FindElements(By.CssSelector(".job-item"));
+
+			#endregion refactor? to GetJobsSetup()
 
 			/*##################
 			#                  #
@@ -231,8 +256,10 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			##################*/
 
 			JobregCategories jobregCategories = new JobregCategories();
-			List<JobModel> existingJobs = new List<JobModel>();
-			foreach (var jobItem in jobs) {
+
+			#region refactor? to "scrapeAds()"
+
+			foreach (var jobAd in jobAdverts) {
 				JobModel job = new JobModel() {
 					OriginWebsite = "jobreg",
 					JobId = Guid.NewGuid().ToString(),
@@ -254,28 +281,21 @@ namespace web_scraper.Interfaces.JobRetrievers {
 				/**/
 				IWebElement advertUrl;
 				try {
-					advertUrl = jobItem.FindElement(By.CssSelector(".adLogo > a"));
+					advertUrl = jobAd.FindElement(By.CssSelector(".adLogo > a"));
 				} catch (NoSuchElementException) {
 					//Sometimes the listing image is missing or a video is displayed
-					advertUrl = jobItem.FindElement(By.CssSelector(".description > a"));
+					advertUrl = jobAd.FindElement(By.CssSelector(".description > a"));
 				}
 				if (advertUrl != null) {
 					/**/
 					job.AdvertUrl = advertUrl.GetAttribute("href");
 					GetForeignJobId(job, job.AdvertUrl);
-					//Check for infinite iterations
-					if (existingJobs.Contains(job)) {
-						Console.WriteLine($"@@@@@@ \nPossible honeypot at {websiteUrl} \ncurrent page {currentPage} \nduplicate jobId {job.ForeignJobId} \njob url {job.AdvertUrl} \n@@@@@@");
-						return jobList;
-					}
-					//Check if already scraped
-					if (existModified.CheckIfExists(job.ForeignJobId)) {
-						Console.WriteLine($"JOB WITH id {job.ForeignJobId} and url {job.AdvertUrl} already exists");
-						existingJobs.Add(job);
-						continue;
-					}
+					//
+					//ToDo
+					//	Check for infinite iterations???
+
 					/**/
-					job = GetJobAdInfo(jobItem, job /*, advertUrl.GetAttribute("href")*/);
+					job = ScrapeJobAdInfo(jobAd, job);
 					/**/
 					jobList.Add(job);
 					foreach (var category in categoryList) {
@@ -286,15 +306,16 @@ namespace web_scraper.Interfaces.JobRetrievers {
 					}
 				}
 			}
-			Console.WriteLine($"Found {jobs.Count} jobs at page {currentPage}!");
 
-			foreach ()
+			#endregion refactor? to "scrapeAds()"
 
-				if (jobs.Count < 15) {
-					//The default amount of jobs = 15
-					//If default amount of jobs < 15 it means it is the last page
-					return jobList;
-				}
+			Console.WriteLine($"Found {jobAdverts.Count} jobs at page {currentPage}!");
+
+			//The default amount of jobs = 15
+			//If default amount of jobs < 15 it means it is the last page
+			if (jobAdverts.Count < 15) {
+				return jobList;
+			}
 
 			/*
 			 *
@@ -350,7 +371,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			return result;
 		}
 
-		private JobModel GetJobAdInfo(IWebElement jobItem, JobModel job/*, string advertUrl*/) {
+		private JobModel ScrapeJobAdInfo(IWebElement jobItem, JobModel job) {
 			var header = jobItem.FindElement(By.CssSelector("h6 > a")).Text;
 			job.PositionHeadline = header;
 			Console.WriteLine($"JOB: {header} \n");
