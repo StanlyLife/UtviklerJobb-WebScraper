@@ -19,6 +19,7 @@ using web_scraper.models;
 using web_scraper.Services;
 using WebDriverManager;
 using WebDriverManager.DriverConfigs.Impl;
+using WebDriverManager.Helpers;
 
 namespace web_scraper.Interfaces.JobRetrievers {
 
@@ -49,12 +50,12 @@ namespace web_scraper.Interfaces.JobRetrievers {
 
 		public async Task<List<JobModel>> CheckForUpdates(bool checkCategories) {
 			List<JobModel> jobList = new List<JobModel>();
-			new DriverManager().SetUpDriver(new ChromeConfig());
+			//new DriverManager().SetUpDriver(new ChromeConfig(), "Latest", Architecture.X64);
 			/*Config*/
 			var chromeoptions = new ChromeOptions();
 			var seleniumConfigService = new SeleniumConfigService();
 			chromeoptions = seleniumConfigService.SetDefaultChromeConfig(chromeoptions);
-			var driver = new ChromeDriver(chromeoptions);
+			var driver = new ChromeDriver(@"C:\WebDrivers", chromeoptions);
 
 			/**/
 			if (checkCategories) {
@@ -111,24 +112,49 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			var config = Configuration.Default.WithDefaultLoader();
 			var context = BrowsingContext.New(config);
 
+			List<JobModel> newJobs = new List<JobModel>();
+			List<JobModel> jobsThatAlreadyExists = new List<JobModel>();
+
 			foreach (var job in jobs) {
+				if (existModified.CheckIfExists(job.ForeignJobId)) {
+					jobsThatAlreadyExists.Add(job);
+					continue;
+				}
+
+				JobModel newJob = job;
+
 				var document = await context.OpenAsync(job.AdvertUrl);
 				Console.WriteLine($"\nURL: {job.AdvertUrl}");
 				/*Admissioner*/
-				if (GetListingAdmissionerInfo(job, document)) {
-					jobs.Remove(job);
-				}
-				/*GetTableContent*/
-				GetListingTableContent(job, document);
-				jobHandler.AddJobListing(job);
+				newJob = GetListingAdmissionerInfo(job, document);
+				newJob = GetListingTableContent(job, document);
+				await jobHandler.AddJobListing(newJob);
 			}
+			jobHandler.SaveChanges();
+
+			foreach (var job in jobsThatAlreadyExists) {
+				//Check if job is updated or not
+				var document = await context.OpenAsync(job.AdvertUrl);
+				var desc = document.QuerySelector(".showBody");
+				if (desc != null) {
+					job.DescriptionHtml = desc.ToHtml();
+					if (existModified.CheckIfModified(job.ForeignJobId, job.DescriptionHtml)) {
+						var updateJob = jobHandler.GetJobListingByForeignId(job.ForeignJobId);
+						updateJob = GetListingAdmissionerInfo(updateJob, document);
+						updateJob = GetListingTableContent(updateJob, document);
+						jobHandler.UpdateJob(updateJob);
+						jobHandler.SaveChanges();
+					}
+				}
+			}
+
 			//ToDo
 			//	Add job to database
 			jobHandler.SaveChanges();
 			return jobs;
 		}
 
-		private void GetListingTableContent(JobModel job, IDocument document) {
+		private JobModel GetListingTableContent(JobModel job, IDocument document) {
 			var tableInfoList = document.QuerySelectorAll("tr");
 			foreach (var row in tableInfoList) {
 				var title = row.QuerySelector(".table-info-title");
@@ -175,15 +201,15 @@ namespace web_scraper.Interfaces.JobRetrievers {
 					Console.WriteLine(row.ToHtml());
 				}
 			}
+			return job;
 		}
 
-		private bool GetListingAdmissionerInfo(JobModel job, IDocument document) {
+		private JobModel GetListingAdmissionerInfo(JobModel job, IDocument document) {
 			var desc = document.QuerySelector(".showBody");
 			if (desc != null) {
 				job.DescriptionHtml = desc.ToHtml();
-				if (existModified.CheckIfExists(job.ForeignJobId) && !existModified.CheckIfModified(job.ForeignJobId, job.DescriptionHtml)) {
-					return true;
-				}
+				//Check if job is in database and has not been modified.
+				//if so do not add it to database
 				job.Description = desc.TextContent;
 			} else {
 				Console.WriteLine($"No jobdescription found for positon: {job.AdvertUrl}");
@@ -215,7 +241,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 			} else {
 				Console.WriteLine($"No tags found for positon: {job.AdvertUrl}");
 			}
-			return true;
+			return job;
 		}
 
 		private async Task<List<JobModel>> GetJobs(string url, List<JobModel> jobList, ChromeDriver driver, List<string> categoryQueryList) {
