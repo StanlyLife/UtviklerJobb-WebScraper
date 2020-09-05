@@ -22,7 +22,7 @@ namespace web_scraper.Interfaces.Database {
 			if (query.Any()) {
 				return true;
 			}
-			Debug.WriteLine($"Joblisting with foreignkey {foreignId} - Nav - does not exist in context");
+			Debug.WriteLine($"Joblisting with foreignkey - {foreignId} - does not exist in context");
 			return false;
 		}
 
