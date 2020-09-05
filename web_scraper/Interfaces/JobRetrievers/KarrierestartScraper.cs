@@ -161,7 +161,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 							JobId = job.JobId,
 							Tag = tag.TextContent.Trim(),
 						};
-						jobTagHandler.AddJobTag(t);
+						await jobTagHandler.AddJobTag(t);
 						jobTagHandler.SaveChanges();
 					}
 				} else {
