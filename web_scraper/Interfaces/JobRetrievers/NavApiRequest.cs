@@ -139,11 +139,11 @@ namespace web_scraper.Interfaces.Implementations {
 				JobId = job.JobId,
 			};
 			if (await jobCategoryHandler.JobIdHasCategory(category1.JobId, category1.Category)) {
-				jobCategoryHandler.AddJobCategory(category1);
+				await jobCategoryHandler.AddJobCategory(category1);
 				jobCategoryHandler.SaveChanges();
 			}
 			if (await jobCategoryHandler.JobIdHasCategory(category2.JobId, category2.Category)) {
-				jobCategoryHandler.AddJobCategory(category2);
+				await jobCategoryHandler.AddJobCategory(category2);
 				jobCategoryHandler.SaveChanges();
 			}
 
