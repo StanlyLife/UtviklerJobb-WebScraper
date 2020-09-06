@@ -3,23 +3,17 @@ using AngleSharp.Dom;
 using AngleSharp.XPath;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.Firefox;
-using OpenQA.Selenium.Remote;
 using OpenQA.Selenium.Support.UI;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using web_scraper.Interfaces.Database;
 using web_scraper.Lists.Categories.jobreg;
 using web_scraper.models;
 using web_scraper.Services;
-using WebDriverManager;
-using WebDriverManager.DriverConfigs.Impl;
-using WebDriverManager.Helpers;
 
 namespace web_scraper.Interfaces.JobRetrievers {
 
@@ -27,8 +21,8 @@ namespace web_scraper.Interfaces.JobRetrievers {
 		private readonly string websiteUrl = "https://www.jobreg.no/jobs.php?";
 		private Stopwatch JobAdsTimer = new Stopwatch();
 		private Stopwatch JobListingTimer = new Stopwatch();
-		private readonly int GlobalMaxIteration = 15;
-		private readonly int MaxPagePerQuery = 2;
+		private readonly int GlobalMaxIteration = 15000;
+		private readonly int MaxPagePerQuery = 500;
 		private readonly IJobHandler jobHandler;
 		private readonly IJobCategoryHandler jobCategoryHandler;
 		private readonly IJobTagHandler jobTagHandler;
