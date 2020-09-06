@@ -11,8 +11,8 @@ namespace web_scraper.models {
 		/**/
 		public string AdvertExpires { get; set; }
 		public string AdvertModified { get; set; }
-
-		public string advertPublished { get; set; }
+		public string AdvertPublished { get; set; }
+		public string AdvertScrapeDate { get; set; }
 
 		public string PositionHeadline { get; set; }
 
@@ -48,9 +48,6 @@ namespace web_scraper.models {
 		public string PositionType { get; set; }
 		public string Sector { get; set; }
 
-		//TODO
-		//	Map
-		[System.ComponentModel.DataAnnotations.Schema.NotMapped]
 		public string Accession { get; set; }
 
 		/**/
