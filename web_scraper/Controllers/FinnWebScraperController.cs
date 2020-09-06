@@ -1,16 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using AngleSharp;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
-using AngleSharp.Dom;
-using web_scraper.models;
 using Newtonsoft.Json;
-using AngleSharp.XPath;
-using web_scraper.Interfaces;
-using web_scraper.Interfaces.Implementations;
-using System.Text.RegularExpressions;
 using web_scraper.Interfaces.JobRetrievers;
 
 namespace web_scraper.Controllers {
