@@ -283,6 +283,7 @@ namespace web_scraper.Interfaces.JobRetrievers {
 				JobModel job = new JobModel() {
 					OriginWebsite = "jobreg",
 					JobId = Guid.NewGuid().ToString(),
+					AdvertScrapeDate = DateTime.Now.ToString("MM/dd/yyyy"),
 				};
 
 				List<JobCategoryModel> categoryList = new List<JobCategoryModel>();

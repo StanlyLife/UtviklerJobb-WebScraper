@@ -63,7 +63,8 @@ namespace web_scraper.Interfaces.JobRetrievers {
 				if (jobTitle == null || advertUrl == null) { continue; }
 				JobModel job = new JobModel() {
 					JobId = Guid.NewGuid().ToString(),
-					OriginWebsite = "Karrierestart"
+					OriginWebsite = "Karrierestart",
+					AdvertScrapeDate = DateTime.Now.ToString("MM/dd/yyyy"),
 				};
 				/**/
 				job.ImageUrl = "https://karrierestart.no" + admissionerLogo.GetAttribute("src");

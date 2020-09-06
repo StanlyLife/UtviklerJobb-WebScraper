@@ -63,7 +63,8 @@ namespace web_scraper.Interfaces.JobRetrievers {
 				foreach (var row in advertrows) {
 					JobModel job = new JobModel {
 						JobId = Guid.NewGuid().ToString(),
-						OriginWebsite = "Finn"
+						OriginWebsite = "Finn",
+						AdvertScrapeDate = DateTime.Now.ToString("MM/dd/yyyy"),
 					};
 
 					var info = row.QuerySelector(".ads__unit__link");

@@ -93,7 +93,7 @@ namespace web_scraper.Interfaces.Implementations {
 		public JobModel SetJobValues(JobModel job, dynamic item) {
 			job.OriginWebsite = "nav";
 			/**/
-			job.advertPublished = item["published"];
+			job.AdvertPublished = item["published"];
 			job.AdvertExpires = item["expires"];
 			job.Accession = item["starttime"];
 			job.Admissioner = item["employer"]["name"];
@@ -127,6 +127,7 @@ namespace web_scraper.Interfaces.Implementations {
 			}
 
 			JobModel job = new JobModel();
+			job.AdvertScrapeDate = DateTime.Now.ToString("MM/dd/yyyy");
 			job.JobId = Guid.NewGuid().ToString();
 			job = SetJobValues(job, item);
 
