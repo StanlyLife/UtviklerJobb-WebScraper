@@ -51,31 +51,33 @@ namespace web_scraper.Interfaces.Implementations {
 			jobHandler.Purge();
 			client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("bearer", ApiKey);
 			client.DefaultRequestHeaders.Add("accept", "application/json");
-			HttpResponseMessage response = await client.GetAsync(UrlConstructor(150, 2));
-
-			var byteArray = response.Content.ReadAsByteArrayAsync().Result;
-			var result = Encoding.UTF8.GetString(byteArray, 0, byteArray.Length);
-
-			dynamic dynJson = JsonConvert.DeserializeObject(result) as Newtonsoft.Json.Linq.JObject;
-
 			List<JobModel> jobList = new List<JobModel>();
-			foreach (var item in dynJson["content"]) {
-				if (existModifiedHandler.CheckIfExists(Convert.ToString(item["uuid"]))) {
-					if (existModifiedHandler.CheckIfModified(Convert.ToString(item["uuid"]), Convert.ToString(item["description"]))) {
-						Debug.WriteLine("updated job");
-						JobModel job = await TransferJobModelsAsync(item, true);
-						jobList.Add(job);
+			for (int i = 1; i <= 5000 / 100; i++) {
+				HttpResponseMessage response = await client.GetAsync(UrlConstructor(100, i));
+
+				var byteArray = response.Content.ReadAsByteArrayAsync().Result;
+				var result = Encoding.UTF8.GetString(byteArray, 0, byteArray.Length);
+
+				dynamic dynJson = JsonConvert.DeserializeObject(result) as Newtonsoft.Json.Linq.JObject;
+
+				foreach (var item in dynJson["content"]) {
+					if (existModifiedHandler.CheckIfExists(Convert.ToString(item["uuid"]))) {
+						if (existModifiedHandler.CheckIfModified(Convert.ToString(item["uuid"]), Convert.ToString(item["description"]))) {
+							Debug.WriteLine("updated job");
+							JobModel job = await TransferJobModelsAsync(item, true);
+							jobList.Add(job);
+						} else {
+							Debug.WriteLine("Job exists and is not modified");
+							continue;
+						}
 					} else {
-						Debug.WriteLine("Job exists and is not modified");
-						continue;
+						Debug.WriteLine("Scraping job");
+						JobModel job = await TransferJobModelsAsync(item, false);
+						jobList.Add(job);
 					}
-				} else {
-					Debug.WriteLine("Scraping job");
-					JobModel job = await TransferJobModelsAsync(item, false);
-					jobList.Add(job);
 				}
+				jobHandler.SaveChanges();
 			}
-			jobHandler.SaveChanges();
 			return jobList;
 		}
 
