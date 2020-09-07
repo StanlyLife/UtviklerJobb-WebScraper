@@ -18,7 +18,6 @@ namespace web_scraper.models {
 
 		public string PositionTitle { get; set; }
 
-		/**/
 		/*Url*/
 		public string ShortDescription { get; set; }
 
