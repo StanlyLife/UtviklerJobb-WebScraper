@@ -2,7 +2,7 @@
 
 namespace web_scraper.Migrations
 {
-    public partial class initial : Migration
+    public partial class init2 : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -20,6 +20,11 @@ namespace web_scraper.Migrations
                 newName: "Tag");
 
             migrationBuilder.AddColumn<string>(
+                name: "Accession",
+                table: "JobListings",
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
                 name: "AdmissionerDescription",
                 table: "JobListings",
                 nullable: true);
@@ -35,7 +40,12 @@ namespace web_scraper.Migrations
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(
-                name: "advertPublished",
+                name: "AdvertPublished",
+                table: "JobListings",
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "AdvertScrapeDate",
                 table: "JobListings",
                 nullable: true);
 
@@ -60,6 +70,10 @@ namespace web_scraper.Migrations
                 name: "JobIndustry");
 
             migrationBuilder.DropColumn(
+                name: "Accession",
+                table: "JobListings");
+
+            migrationBuilder.DropColumn(
                 name: "AdmissionerDescription",
                 table: "JobListings");
 
@@ -72,7 +86,11 @@ namespace web_scraper.Migrations
                 table: "JobListings");
 
             migrationBuilder.DropColumn(
-                name: "advertPublished",
+                name: "AdvertPublished",
+                table: "JobListings");
+
+            migrationBuilder.DropColumn(
+                name: "AdvertScrapeDate",
                 table: "JobListings");
 
             migrationBuilder.RenameColumn(

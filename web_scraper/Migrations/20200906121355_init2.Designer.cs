@@ -9,8 +9,8 @@ using web_scraper.Data;
 namespace web_scraper.Migrations
 {
     [DbContext(typeof(WebScraperContext))]
-    [Migration("20200822122918_initial")]
-    partial class initial
+    [Migration("20200906121355_init2")]
+    partial class init2
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -61,6 +61,9 @@ namespace web_scraper.Migrations
                     b.Property<string>("JobId")
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("Accession")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Admissioner")
                         .HasColumnType("nvarchar(max)");
 
@@ -80,6 +83,12 @@ namespace web_scraper.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("AdvertModified")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AdvertPublished")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AdvertScrapeDate")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("AdvertUrl")
@@ -131,9 +140,6 @@ namespace web_scraper.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ShortDescription")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("advertPublished")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("JobId");
