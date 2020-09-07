@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using web_scraper.Interfaces.Database;
 using web_scraper.models;
 
 namespace web_scraper.Interfaces.JobRetrievers {
@@ -19,13 +20,20 @@ namespace web_scraper.Interfaces.JobRetrievers {
 		private readonly IJobCategoryHandler jobCategoryHandler;
 		private readonly IJobTagHandler jobTagHandler;
 		private readonly IJobIndustryHandler jobIndustryHandler;
+		private readonly IExistModified existModified;
 		private int iteration = 0;
 
-		public KarrierestartScraper(IJobHandler jobHandler, IJobCategoryHandler jobCategoryHandler, IJobTagHandler jobTagHandler, IJobIndustryHandler jobIndustryHandler) {
+		public KarrierestartScraper(
+			IJobHandler jobHandler,
+			IJobCategoryHandler jobCategoryHandler,
+			IJobTagHandler jobTagHandler,
+			IJobIndustryHandler jobIndustryHandler,
+			IExistModified existModified) {
 			this.jobHandler = jobHandler;
 			this.jobCategoryHandler = jobCategoryHandler;
 			this.jobTagHandler = jobTagHandler;
 			this.jobIndustryHandler = jobIndustryHandler;
+			this.existModified = existModified;
 		}
 
 		public async Task<List<JobModel>> CheckForUpdates() {
@@ -67,14 +75,18 @@ namespace web_scraper.Interfaces.JobRetrievers {
 					AdvertScrapeDate = DateTime.Now.ToString("MM/dd/yyyy"),
 				};
 				/**/
+				job.ForeignJobId = advertUrl.GetAttribute("href").Substring(advertUrl.GetAttribute("href").LastIndexOf('/') + 1);
+				if (existModified.CheckIfExists(job.ForeignJobId)) {
+					continue;
+				}
+				Console.WriteLine($"Foreign jobID: {job.ForeignJobId}");
+				/**/
 				job.ImageUrl = "https://karrierestart.no" + admissionerLogo.GetAttribute("src");
 				/**/
 				job.PositionHeadline = jobTitle.TextContent;
 				/**/
 				job.AdvertUrl = advertUrl.GetAttribute("href");
 				/**/
-				job.ForeignJobId = advertUrl.GetAttribute("href").Substring(advertUrl.GetAttribute("href").LastIndexOf('/') + 1);
-				Console.WriteLine($"Foreign jobID: {job.ForeignJobId}");
 
 				Console.WriteLine(job.PositionHeadline);
 				Console.WriteLine(job.AdvertUrl);
