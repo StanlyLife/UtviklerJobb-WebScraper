@@ -27,7 +27,7 @@ namespace web_scraper.Controllers {
 
 		public async Task<string> GetAsync() {
 			var result = await karrierestartScraper.CheckForUpdates();
-
+			Console.WriteLine("finished");
 			return JsonConvert.SerializeObject(result);
 		}
 	}
